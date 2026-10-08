@@ -1,58 +1,38 @@
 #!/usr/bin/env node
-// Linha customizada para cada subagente no painel de agentes.
-// Configurar em ~/.claude/settings.json:
-//   "subagentStatusLine": { "type": "command", "command": "node ~/.claude/subagent-statusline.js" }
-//
-// Entrada: um JSON com { columns, tasks: [...] }.
-// Saída: uma linha JSON por subagente, no formato {"id": "...", "content": "..."}.
+// Linha de cada subagente no painel de agentes (ctx-monitor) — tema ícones compactos
+//   ● nome  modelo  effort  ◔ contexto%  tokens
+// Entrada: { columns, tasks: [...] }. Saída: uma linha JSON {"id","content"} por subagente.
 
 const C = { reset: '\x1b[0m', dim: '\x1b[2m', cyan: '\x1b[36m', magenta: '\x1b[35m',
             green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m', blue: '\x1b[34m' };
+const paint = (c, t) => `${c}${t}${C.reset}`;
+const pie = (p) => (p >= 88 ? '●' : p >= 63 ? '◕' : p >= 38 ? '◑' : p >= 13 ? '◔' : '○');
+const col = (p) => (p >= 85 ? C.red : p >= 60 ? C.yellow : C.green);
+const k = (n) => (n == null ? '?' : n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
 
-function bar(pct, width = 12) {
-  const p = Math.max(0, Math.min(100, pct));
-  const filled = Math.round((p * width) / 100);
-  const color = p >= 85 ? C.red : p >= 60 ? C.yellow : C.green;
-  return `${color}${'█'.repeat(filled)}${C.dim}${'░'.repeat(width - filled)}${C.reset}`;
-}
+// "claude-haiku-5-5" -> "haiku"
+const shortModel = (id) => (id ? id.replace(/^claude-/, '').replace(/-\d.*$/, '') : '…');
 
-function k(n) {
-  if (n == null) return '?';
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`;
-}
-
-// "claude-sonnet-5-5" -> "sonnet-5-5"
-const shortModel = (id) => (id ? id.replace(/^claude-/, '') : 'resolvendo…');
-
-const STATUS_ICON = { running: `${C.blue}●${C.reset}`, completed: `${C.green}✓${C.reset}`,
-                      failed: `${C.red}✗${C.reset}`, killed: `${C.red}■${C.reset}` };
+const STATUS = { running: paint(C.blue, '●'), completed: paint(C.green, '✓'),
+                 failed: paint(C.red, '✗'), killed: paint(C.red, '■') };
 
 let input = '';
 process.stdin.on('data', (c) => (input += c));
 process.stdin.on('end', () => {
   let d;
-  try { d = JSON.parse(input); } catch { return; } // sem saída = mantém a linha padrão
+  try { d = JSON.parse(input); } catch { return; }
 
   for (const t of d.tasks ?? []) {
-    const who = t.name ?? t.agentType ?? 'agent';
-    const icon = STATUS_ICON[t.status] ?? `${C.dim}${t.status}${C.reset}`;
-
-    // effort pode ser nível (string) ou orçamento de tokens (número)
-    const effort = t.effort == null ? 'default' : String(t.effort);
-
-    let ctx = `${C.dim}ctx ?${C.reset}`;
+    const parts = [
+      STATUS[t.status] ?? paint(C.dim, '·'),
+      paint(C.cyan, t.name ?? t.agentType ?? 'agent'),
+      paint(C.dim, shortModel(t.model)),
+    ];
+    if (t.effort != null) parts.push(paint(C.magenta, String(t.effort)));
     if (t.contextWindowSize && t.tokenCount != null) {
       const pct = Math.floor((t.tokenCount / t.contextWindowSize) * 100);
-      ctx = `${bar(pct)} ${pct}% ${C.dim}(${k(t.tokenCount)}/${k(t.contextWindowSize)})${C.reset}`;
+      parts.push(paint(col(pct), `${pie(pct)} ${pct}%`), paint(C.dim, k(t.tokenCount)));
     }
-
-    const content = [
-      `${icon} ${C.cyan}${who}${C.reset}`,
-      `${shortModel(t.model)}`,
-      `${C.magenta}effort:${effort}${C.reset}`,
-      ctx,
-    ].join(`${C.dim} · ${C.reset}`);
-
-    process.stdout.write(JSON.stringify({ id: t.id, content }) + '\n');
+    process.stdout.write(JSON.stringify({ id: t.id, content: parts.join(' ') }) + '\n');
   }
 });

@@ -10,10 +10,20 @@ Plugin do Claude Code que mostra, em tempo real:
 Desligue segmentos com `CTX_MONITOR_CACHE=0` ou `CTX_MONITOR_AIMEMORY=0`.
 
 ```
-Opus · effort:high · █████████████░░░░░░░ 67% (134k/200k)
-● Explore · haiku-5-5 · effort:low · ███░░░░░░░░░ 21% (42k/200k)
-✓ reviewer · sonnet-5-5 · effort:default · ███████████░ 91% (910k/1.0M)
+◆ Opus ⚙ high ◕ 67% 134k  ⏲ 42:12 ↺ 91% ✕2:tools_changed  ⛁ 1.2k ⧗3
+● Explore haiku low ◔ 21% 42k
+✓ reviewer sonnet ● 91% 910k
 ```
+
+| Ícone | Significado |
+| :-- | :-- |
+| ◆ / ⚙ | modelo / effort |
+| ○ ◔ ◑ ◕ ● | uso da janela de contexto (cor: verde < 60%, amarelo < 85%, vermelho) |
+| ⏲ | cache quente — tempo até expirar o TTL |
+| ❄ ↻ | cache fria — tokens que a próxima requisição vai reescrever |
+| ↺ | hit ratio da prompt cache |
+| ✕N | misses de cache, com a causa do último |
+| ⛁ / ⧗ | páginas no ai-memory / eventos na fila local (servidor fora do ar) |
 
 ## Instalação
 

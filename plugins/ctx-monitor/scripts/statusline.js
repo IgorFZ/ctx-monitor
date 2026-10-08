@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-// Status line do agente principal (ctx-monitor)
-//   linha 1: modelo · effort · barra de contexto
-//   linha 2: prompt cache — quente/fria, hit ratio, tempo restante do TTL, misses
-//   linha 3: ai-memory — servidor, páginas, eventos na fila (só se o CLI existir)
+// Status line do agente principal (ctx-monitor) — tema ícones compactos
 //
 // Desligar segmentos: CTX_MONITOR_CACHE=0, CTX_MONITOR_AIMEMORY=0
 
@@ -13,14 +10,6 @@ const { execFileSync } = require('child_process');
 
 const C = { reset: '\x1b[0m', dim: '\x1b[2m', cyan: '\x1b[36m', magenta: '\x1b[35m',
             green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m', blue: '\x1b[34m' };
-const SEP = `${C.dim} · ${C.reset}`;
-
-function bar(pct, width = 20) {
-  const p = Math.max(0, Math.min(100, pct));
-  const filled = Math.round((p * width) / 100);
-  const color = p >= 85 ? C.red : p >= 60 ? C.yellow : C.green;
-  return `${color}${'█'.repeat(filled)}${C.dim}${'░'.repeat(width - filled)}${C.reset}`;
-}
 
 function k(n) {
   if (n == null) return '?';
@@ -34,64 +23,54 @@ function clock(sec) {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-// ---------- linha 1: contexto ----------
-function contextLine(d) {
-  const model = d.model?.display_name ?? d.model?.id ?? '?';
-  const effort = d.effort?.level;
+// Tema: ícones compactos — tudo numa linha.
+//   ◆ modelo  ⚙ effort  ◐ contexto%  tokens  ⏲ TTL | ❄ fria  ↺ hit%  ✕ misses  ⛁ ai-memory  ⧗ fila
+// Ícone do contexto/pizza muda com o uso: ○ ◔ ◑ ◕ ●
+
+const pie = (p) => (p >= 88 ? '●' : p >= 63 ? '◕' : p >= 38 ? '◑' : p >= 13 ? '◔' : '○');
+const col = (p) => (p >= 85 ? C.red : p >= 60 ? C.yellow : C.green);
+const paint = (c, t) => `${c}${t}${C.reset}`;
+
+function contextSeg(d) {
   const cw = d.context_window ?? {};
   const pct = Math.floor(cw.used_percentage ?? 0);
-  return [
-    `${C.cyan}${model}${C.reset}`,
-    effort ? `${C.magenta}effort:${effort}${C.reset}` : null,
-    `${bar(pct)} ${pct}% ${C.dim}(${k(cw.total_input_tokens)}/${k(cw.context_window_size)})${C.reset}`,
-  ].filter(Boolean).join(SEP);
+  const parts = [paint(C.cyan, `◆ ${d.model?.display_name ?? d.model?.id ?? '?'}`)];
+  if (d.effort?.level) parts.push(paint(C.magenta, `⚙ ${d.effort.level}`));
+  parts.push(paint(col(pct), `${pie(pct)} ${pct}%`));
+  if (cw.total_input_tokens != null) parts.push(paint(C.dim, k(cw.total_input_tokens)));
+  return parts.join(' ');
 }
 
-// ---------- linha 2: prompt cache ----------
-function cacheLine(d) {
-  const pc = d.prompt_cache;               // ausente até a 1ª resposta; requer CC >= 2.1.251
-  if (!pc) return null;
-  if (pc.caching_observed === false) return `${C.dim}cache: não reportado pelo provedor${C.reset}`;
-
+function cacheSeg(d) {
+  const pc = d.prompt_cache;               // requer CC >= 2.1.251
+  if (!pc || pc.caching_observed === false) return null;
   const parts = [];
-  const now = Date.now() / 1000;
-
   if (pc.warm && pc.expires_at) {
-    const left = pc.expires_at - now;
+    const leftSec = pc.expires_at - Date.now() / 1000;
     const ttlSec = pc.ttl === '1h' ? 3600 : 300;
-    const color = left < ttlSec * 0.2 ? C.yellow : C.green;
-    parts.push(`${color}● cache quente${C.reset} ${C.dim}(${pc.ttl ?? '?'})${C.reset} expira em ${color}${clock(left)}${C.reset}`);
+    parts.push(paint(leftSec < ttlSec * 0.2 ? C.yellow : C.green, `⏲ ${clock(leftSec)}`));
   } else {
     const re = pc.recache_tokens_if_cold;
-    parts.push(`${C.blue}❄ cache fria${C.reset}${re ? ` ${C.dim}— próxima req reescreve ${k(re)}${C.reset}` : ''}`);
+    parts.push(paint(C.blue, `❄ fria`) + (re ? paint(C.dim, ` ↻${k(re)}`) : ''));
   }
-
   if (pc.hit_ratio != null) {
     const hr = Math.round(pc.hit_ratio * 100);
-    const color = hr >= 80 ? C.green : hr >= 50 ? C.yellow : C.red;
-    parts.push(`hit ${color}${hr}%${C.reset}`);
+    parts.push(paint(hr >= 80 ? C.green : hr >= 50 ? C.yellow : C.red, `↺ ${hr}%`));
   }
-
   if (pc.misses) {
-    const cause = pc.last_miss_cause?.causes?.join('+');
-    parts.push(`${C.yellow}${pc.misses} miss${pc.misses > 1 ? 'es' : ''}${C.reset}${cause ? ` ${C.dim}(último: ${cause})${C.reset}` : ''}`);
+    const cause = pc.last_miss_cause?.causes?.[0];
+    parts.push(paint(C.yellow, `✕${pc.misses}`) + (cause ? paint(C.dim, `:${cause}`) : ''));
   }
-  if (pc.expected_rebuilds) parts.push(`${C.dim}${pc.expected_rebuilds} rebuild(s) esperado(s)${C.reset}`);
-
-  return parts.join(SEP);
+  return parts.join(' ');
 }
 
-// ---------- linha 3: ai-memory ----------
-// `ai-memory status --json` faz uma chamada HTTP; o resultado fica em cache por 30s
-// para não pesar no refresh da status line.
-function aiMemoryLine(d) {
+// `ai-memory status --json` faz chamada HTTP; resultado em cache por 30s.
+function aiMemorySeg(d) {
   const cacheFile = path.join(os.tmpdir(), `ctx-monitor-aimem-${d.session_id ?? 'x'}.json`);
   let st;
   try {
-    const age = Date.now() - fs.statSync(cacheFile).mtimeMs;
-    if (age < 30_000) st = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    if (Date.now() - fs.statSync(cacheFile).mtimeMs < 30_000) st = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
   } catch {}
-
   if (!st) {
     st = { ok: false };
     try {
@@ -100,27 +79,19 @@ function aiMemoryLine(d) {
       });
       st = { ok: true, ...JSON.parse(out) };
     } catch (e) {
-      if (e.code === 'ENOENT') st = { missing: true };       // CLI não instalado
+      if (e.code === 'ENOENT') st = { missing: true };
       else {
-        // Servidor fora do ar: o CLI imprime o spool local no stderr
         const m = String(e.stderr ?? '').match(/pending[":\s]+(\d+)/);
         st = { ok: false, pending: m ? Number(m[1]) : null };
       }
     }
     try { fs.writeFileSync(cacheFile, JSON.stringify(st)); } catch {}
   }
-
   if (st.missing) return null;
-  if (!st.ok) {
-    const q = st.pending ? ` ${C.yellow}· ${st.pending} evento(s) na fila${C.reset}` : '';
-    return `${C.red}✗ ai-memory offline${C.reset}${q}`;
-  }
-  const parts = [`${C.green}● ai-memory${C.reset}`];
-  if (st.counts?.pages_latest != null) parts.push(`${k(st.counts.pages_latest)} páginas`);
-  if (st.counts?.sessions != null) parts.push(`${k(st.counts.sessions)} sessões`);
-  if (st.spool?.pending) parts.push(`${C.yellow}${st.spool.pending} na fila${C.reset}`);
-  if (st.capture_mode === 'allowlist') parts.push(`${C.dim}captura: allowlist${C.reset}`);
-  return parts.join(SEP);
+  const queue = st.ok ? st.spool?.pending : st.pending;
+  const q = queue ? ' ' + paint(C.yellow, `⧗${queue}`) : '';
+  if (!st.ok) return paint(C.red, '⛁ off') + q;
+  return paint(C.green, `⛁ ${k(st.counts?.pages_latest ?? 0)}`) + q;
 }
 
 let input = '';
@@ -129,10 +100,10 @@ process.stdin.on('end', () => {
   let d;
   try { d = JSON.parse(input); } catch { console.log('statusline: JSON inválido'); return; }
 
-  const lines = [contextLine(d)];
-  if (process.env.CTX_MONITOR_CACHE !== '0') lines.push(cacheLine(d));
+  const segs = [contextSeg(d)];
+  if (process.env.CTX_MONITOR_CACHE !== '0') segs.push(cacheSeg(d));
   if (process.env.CTX_MONITOR_AIMEMORY !== '0') {
-    try { lines.push(aiMemoryLine(d)); } catch {}
+    try { segs.push(aiMemorySeg(d)); } catch {}
   }
-  console.log(lines.filter(Boolean).join('\n'));
+  console.log(segs.filter(Boolean).join('  '));
 });
