@@ -6,24 +6,18 @@ A interface inclui:
 
 - **Agente principal** (status line): modelo, effort e uso da janela de contexto
 - **Cada subagente** (painel de agentes): status, tipo, modelo, effort e uso de contexto
-- **Prompt cache**: quente/fria, contagem regressiva do TTL, hit ratio, misses e a causa do último
+- **Prompt cache**: quente/frio, contagem regressiva do TTL, hit ratio e misses
 - **ai-memory** (se o CLI estiver no PATH): servidor online/offline, páginas e eventos na fila
 
-```
-◆ Opus ⚙ high ◕ 67% 134k  ⏲ 42:12 ↺ 91% ✕2:tools_changed  ⛁ 1.2k ⧗3
-● Explore haiku low ◔ 21% 42k
-✓ reviewer sonnet ● 91% 910k
+```text
+Opus 5.5 · high | ctx ━━━━━───── 52% · 518k/1M
+cache 59:15 · hit 98% · misses 3 | memory offline · fila 2
+
+Explore | haiku-5-5 · low | ctx ━━────── ~21% · 42k/200k
+reviewer | sonnet-5-5 | ctx ━━━━━━━─ ~91% · 910k/1M
 ```
 
-| Ícone | Significado |
-| :-- | :-- |
-| ◆ / ⚙ | modelo / effort |
-| ○ ◔ ◑ ◕ ● | uso da janela de contexto (cor: verde < 60%, amarelo < 85%, vermelho) |
-| ⏲ | cache quente — tempo até expirar o TTL |
-| ❄ ↻ | cache fria — tokens que a próxima requisição vai reescrever |
-| ↺ | hit ratio da prompt cache |
-| ✕N | misses de cache, com a causa do último |
-| ⛁ / ⧗ | páginas no ai-memory / eventos na fila local (servidor fora do ar) |
+O contexto fica verde abaixo de 60%, amarelo a partir de 60% e vermelho a partir de 85%. A linha de cache mostra o tempo restante, a taxa de acerto e o número de misses. A integração com `ai-memory` mostra páginas ou estado offline, além da fila pendente.
 
 ## Instalação
 
@@ -32,13 +26,20 @@ Execute dentro do Claude Code:
 ```text
 /plugin marketplace add IgorFZ/ctx-monitor
 /plugin install ctx-monitor@ctx-monitor
-/ctx-monitor:setup        # ativa a barra do agente principal
+/ctx-monitor:setup
 ```
 
-A barra dos subagentes já vem ativa ao habilitar o plugin. A do agente principal
-precisa do `/ctx-monitor:setup`, porque plugins só podem declarar
-`subagentStatusLine` nas próprias settings — o `statusLine` principal tem que ficar
-no `~/.claude/settings.json` do usuário.
+O setup configura as duas barras no `settings.json` do usuário, faz backup e preserva as outras opções. Se houver outro renderizador configurado, pede confirmação antes de substituí-lo. O diretório padrão é `~/.claude`; `CLAUDE_CONFIG_DIR` também é respeitado.
+
+## Atualização
+
+```text
+/plugin marketplace update ctx-monitor
+/plugin update ctx-monitor@ctx-monitor
+/ctx-monitor:setup
+```
+
+Reinicie a sessão se o painel dos subagentes continuar com as linhas padrão. O plugin usa cópias locais em um caminho estável, sem depender de `${CLAUDE_PLUGIN_ROOT}` nos comandos das settings.
 
 ## Configuração
 
@@ -60,22 +61,22 @@ No Claude Code:
 /plugin uninstall ctx-monitor@ctx-monitor
 ```
 
-O primeiro comando remove a configuração da status line principal quando ela aponta para o plugin. O segundo remove o plugin. As cópias dos scripts em `~/.claude/ctx-monitor/` podem ser apagadas depois.
+O primeiro comando remove as configurações das duas barras quando apontam para o plugin. O segundo remove o plugin. As cópias dos scripts em `~/.claude/ctx-monitor/` podem ser apagadas depois.
 
 ## Como funciona
 
 | Peça | O que faz |
 | :-- | :-- |
-| `settings.json` | Registra `subagentStatusLine` apontando para o script do plugin |
-| `hooks/hooks.json` | No `SessionStart`, copia os scripts para `~/.claude/ctx-monitor/` (caminho estável entre updates) |
-| `commands/setup.md` | Aponta o `statusLine` do usuário para `~/.claude/ctx-monitor/statusline.js` |
-| `commands/uninstall.md` | Remove essa entrada |
+| `settings.json` | Registra `subagentStatusLine` usando a cópia local do script |
+| `hooks/hooks.json` | No `SessionStart`, copia os renderizadores e o módulo de formatação para `~/.claude/ctx-monitor/` (caminho estável entre updates) |
+| `commands/setup.md` | Executa `scripts/setup.js`, que configura as duas barras e salva backup |
+| `commands/uninstall.md` | Remove as duas entradas quando pertencem ao ctx-monitor |
 
 ## Compatibilidade e limites
 
-- A % dos subagentes é `tokenCount / contextWindowSize` — `tokenCount` é acumulado, então é aproximação. A do principal (`used_percentage`) é exata.
+- A % dos subagentes, marcada com `~`, é `tokenCount / contextWindowSize` — `tokenCount` é acumulado, então é aproximação. A do principal (`used_percentage`) é exata.
 - `effort` dos subagentes é o valor **configurado**; se o modelo não suportar o nível, o efetivo pode diferir.
-- Requer Claude Code ≥ 2.1.213 para modelo/effort por subagente e ≥ 2.1.251 para a linha de cache.
+- Requer Claude Code ≥ 2.1.213 para modelo/effort por subagente e ≥ 2.1.251 para a linha de cache. O tipo do subagente (`agentType`) é informado a partir da versão 2.1.293.
 - O `ai-memory status --json` é consultado no máximo a cada 30s (cache em arquivo temporário por sessão).
 - Requer Node.js 18 ou superior no PATH.
 

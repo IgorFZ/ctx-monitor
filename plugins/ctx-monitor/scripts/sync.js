@@ -1,22 +1,21 @@
 #!/usr/bin/env node
-// Copia os scripts do plugin para um caminho estável (~/.claude/ctx-monitor/).
-// Motivo: o statusLine principal não pode ser declarado pelo plugin e precisa
-// ficar no settings.json do usuário, mas ${CLAUDE_PLUGIN_ROOT} muda a cada update.
-// Rodando no SessionStart, o caminho estável sempre aponta para a versão atual.
+// Copia os renderizadores para um caminho que não muda a cada update do plugin.
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
+const { configDir } = require('./config');
 
-const src = __dirname;
-const dest = path.join(os.homedir(), '.claude', 'ctx-monitor');
-
-try {
+function sync() {
+  const dest = path.join(configDir(), 'ctx-monitor');
   fs.mkdirSync(dest, { recursive: true });
-  for (const f of ['statusline.js', 'subagent-statusline.js']) {
-    fs.copyFileSync(path.join(src, f), path.join(dest, f));
+  for (const file of ['statusline.js', 'subagent-statusline.js', 'format.js']) {
+    fs.copyFileSync(path.join(__dirname, file), path.join(dest, file));
   }
-} catch (e) {
-  // Nunca derrubar a sessão por causa disso
-  process.stderr.write(`ctx-monitor sync falhou: ${e.message}\n`);
 }
-process.exit(0);
+
+if (require.main === module) {
+  try { sync(); } catch (error) {
+    // Uma falha no hook não deve impedir a sessão de abrir.
+    process.stderr.write(`ctx-monitor sync falhou: ${error.message}\n`);
+  }
+}
+module.exports = { sync };

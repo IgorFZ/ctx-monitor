@@ -1,18 +1,11 @@
 ---
-description: Ativa a barra de contexto do agente principal no settings.json do usuário
+description: Configura as barras de contexto do agente principal e dos subagentes
 ---
 
-Configure a status line principal do ctx-monitor no settings do usuário.
+Configure as duas barras do ctx-monitor.
 
-1. Rode `node "${CLAUDE_PLUGIN_ROOT}/scripts/sync.js"` para garantir que `~/.claude/ctx-monitor/statusline.js` existe.
-2. Leia `~/.claude/settings.json` (crie com `{}` se não existir).
-3. Se já existir uma chave `statusLine` apontando para outro script, mostre o valor atual ao usuário e pergunte se pode substituir antes de continuar.
-4. Defina, preservando todas as outras chaves do arquivo:
-   ```json
-   "statusLine": {
-     "type": "command",
-     "command": "node ~/.claude/ctx-monitor/statusline.js",
-     "refreshInterval": 1
-   }
-   ```
-5. Confirme ao usuário em uma frase que a barra aparece na próxima atualização da interface.
+1. Leia o `settings.json` no diretório indicado por `CLAUDE_CONFIG_DIR`, ou em `~/.claude` quando a variável não estiver definida.
+2. Confira as chaves `statusLine` e `subagentStatusLine`. Se alguma existir e o `command` não contiver `ctx-monitor`, mostre os comandos atuais e peça confirmação para substituí-los. Se o usuário já pediu explicitamente para trocar essas barras pelo ctx-monitor, prossiga.
+3. Rode `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.js"`. Use `--replace` se a substituição de uma configuração existente foi autorizada. O script faz backup e preserva as outras chaves.
+4. Confira se o comando terminou com sucesso. Não afirme que configurou as barras se houve erro.
+5. Informe que as duas barras foram configuradas. Se o painel continuar com as linhas padrão, peça para reiniciar a sessão; `/reload-plugins` pode não atualizar o comando dos subagentes na sessão atual.

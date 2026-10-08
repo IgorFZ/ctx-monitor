@@ -1,6 +1,6 @@
 {
   "subagentStatusLine": {
     "type": "command",
-    "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/subagent-statusline.js\""
+    "command": "node -e \"require(require('path').join(process.env.CLAUDE_CONFIG_DIR || require('path').join(require('os').homedir(), '.claude'), 'ctx-monitor', 'subagent-statusline.js'))\""
   }
 }

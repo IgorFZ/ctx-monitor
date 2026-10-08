@@ -1,8 +1,8 @@
 ---
-description: Remove a barra de contexto principal do settings.json do usuário
+description: Remove as barras do ctx-monitor das configurações do usuário
 ---
 
-1. Leia `~/.claude/settings.json`.
-2. Remova a chave `statusLine` somente se o `command` dela contiver `ctx-monitor`; caso contrário, avise o usuário e não altere nada.
-3. Preserve todas as outras chaves.
-4. Diga ao usuário que a barra dos subagentes some ao desabilitar o plugin (`/plugin disable ctx-monitor`).
+1. Leia o `settings.json` no diretório indicado por `CLAUDE_CONFIG_DIR`, ou em `~/.claude` quando a variável não estiver definida.
+2. Salve uma cópia de backup antes de alterar o arquivo.
+3. Remova `statusLine` e `subagentStatusLine` somente quando o `command` de cada chave contiver `ctx-monitor`. Preserve todas as outras chaves e configurações de outros renderizadores.
+4. Informe que a configuração padrão dos subagentes fornecida pelo plugin some ao desinstalá-lo (`/plugin uninstall ctx-monitor@ctx-monitor`). Se o painel não atualizar, reinicie a sessão.

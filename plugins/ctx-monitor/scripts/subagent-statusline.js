@@ -1,38 +1,31 @@
 #!/usr/bin/env node
-// Linha de cada subagente no painel de agentes (ctx-monitor) — tema ícones compactos
-//   ● nome  modelo  effort  ◔ contexto%  tokens
-// Entrada: { columns, tasks: [...] }. Saída: uma linha JSON {"id","content"} por subagente.
-
-const C = { reset: '\x1b[0m', dim: '\x1b[2m', cyan: '\x1b[36m', magenta: '\x1b[35m',
-            green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m', blue: '\x1b[34m' };
-const paint = (c, t) => `${c}${t}${C.reset}`;
-const pie = (p) => (p >= 88 ? '●' : p >= 63 ? '◕' : p >= 38 ? '◑' : p >= 13 ? '◔' : '○');
-const col = (p) => (p >= 85 ? C.red : p >= 60 ? C.yellow : C.green);
-const k = (n) => (n == null ? '?' : n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : `${n}`);
-
-// "claude-haiku-5-5" -> "haiku"
-const shortModel = (id) => (id ? id.replace(/^claude-/, '').replace(/-\d.*$/, '') : '…');
-
-const STATUS = { running: paint(C.blue, '●'), completed: paint(C.green, '✓'),
-                 failed: paint(C.red, '✗'), killed: paint(C.red, '■') };
+// Entrada: { columns, tasks }. Saída: uma linha JSON { id, content } por tarefa.
+const { C, paint, clean, k, separator, width, fit, context } = require('./format');
 
 let input = '';
-process.stdin.on('data', (c) => (input += c));
+process.stdin.on('data', (chunk) => (input += chunk));
 process.stdin.on('end', () => {
-  let d;
-  try { d = JSON.parse(input); } catch { return; }
-
-  for (const t of d.tasks ?? []) {
-    const parts = [
-      STATUS[t.status] ?? paint(C.dim, '·'),
-      paint(C.cyan, t.name ?? t.agentType ?? 'agent'),
-      paint(C.dim, shortModel(t.model)),
-    ];
-    if (t.effort != null) parts.push(paint(C.magenta, String(t.effort)));
-    if (t.contextWindowSize && t.tokenCount != null) {
-      const pct = Math.floor((t.tokenCount / t.contextWindowSize) * 100);
-      parts.push(paint(col(pct), `${pie(pct)} ${pct}%`), paint(C.dim, k(t.tokenCount)));
+  let data;
+  try { data = JSON.parse(input); } catch { return; }
+  if (!data || !Array.isArray(data.tasks)) return;
+  const columns = Math.max(1, Number(data.columns) || 120);
+  for (const task of data.tasks) {
+    if (!task || typeof task.id !== 'string') continue;
+    const name = clean(task.name ?? task.agentType ?? 'agent');
+    const model = clean(task.model ? task.model.replace(/^claude-/, '') : 'modelo --');
+    const effort = task.effort == null ? '' : ` · ${clean(task.effort)}`;
+    const pct = task.contextWindowSize && task.tokenCount != null
+      ? task.tokenCount / task.contextWindowSize * 100 : null;
+    const tokens = pct == null ? `tokens ${k(task.tokenCount)}`
+      : context(pct, task.tokenCount, task.contextWindowSize, columns >= 90 ? 8 : 0, true);
+    const metadata = model + effort + separator + tokens;
+    const label = fit(name, Math.max(1, columns - width(metadata) - 3));
+    let content = paint(C.cyan, label) + separator + metadata;
+    // A interface já fornece o indicador de execução à esquerda da linha.
+    const description = clean(task.label ?? task.description ?? '');
+    if (description && columns - width(content) > 16) {
+      content += separator + fit(description, columns - width(content) - 3);
     }
-    process.stdout.write(JSON.stringify({ id: t.id, content: parts.join(' ') }) + '\n');
+    process.stdout.write(JSON.stringify({ id: task.id, content: fit(content, columns) }) + '\n');
   }
 });
