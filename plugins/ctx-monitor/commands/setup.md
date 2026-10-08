@@ -12,7 +12,7 @@ Configure a status line principal do ctx-monitor no settings do usuário.
    "statusLine": {
      "type": "command",
      "command": "node ~/.claude/ctx-monitor/statusline.js",
-     "refreshInterval": 2
+     "refreshInterval": 1
    }
    ```
 5. Confirme ao usuário em uma frase que a barra aparece na próxima atualização da interface.
