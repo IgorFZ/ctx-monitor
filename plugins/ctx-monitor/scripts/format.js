@@ -1,7 +1,8 @@
 const C = { reset: '\x1b[0m', cyan: '\x1b[36m', gray: '\x1b[90m',
   green: '\x1b[32m', yellow: '\x1b[33m', red: '\x1b[31m' };
 const paint = (color, text) => `${color}${text}${C.reset}`;
-const clean = (text) => String(text).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replace(/[\x00-\x1f\x7f]/g, ' ');
+const osc8 = /\x1b\]8;[^\x07\x1b]*(?:\x07|\x1b\\)/g;
+const clean = (text) => String(text).replace(osc8, '').replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '').replace(/[\x00-\x1f\x7f]/g, ' ');
 const k = (n) => n == null ? '?' : n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M`
   : n >= 1000 ? `${+(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
 const color = (p) => p >= 85 ? C.red : p >= 60 ? C.yellow : C.green;
@@ -15,15 +16,19 @@ function width(text) {
 // Limita o texto visível sem cortar sequências ANSI.
 function fit(text, columns) {
   if (width(text) <= columns) return text;
-  let result = '', used = 0;
-  for (const part of text.match(/\x1b\[[0-?]*[ -/]*[@-~]|[^]/gu) ?? []) {
-    if (part.startsWith('\x1b')) { result += part; continue; }
+  let result = '', used = 0, linked = false;
+  for (const part of text.match(/\x1b\]8;[^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-?]*[ -/]*[@-~]|[^]/gu) ?? []) {
+    if (part.startsWith('\x1b')) {
+      if (part.startsWith('\x1b]8;')) linked = !/^\x1b\]8;;(?:\x07|\x1b\\)$/.test(part);
+      result += part;
+      continue;
+    }
     const size = width(part);
     if (used + size > Math.max(0, columns - 1)) break;
     result += part;
     used += size;
   }
-  return result + '…' + C.reset;
+  return result + '…' + (linked ? '\x1b]8;;\x1b\\' : '') + C.reset;
 }
 
 function context(pct, tokens, capacity, barWidth = 10, approximate = false) {
@@ -35,4 +40,13 @@ function context(pct, tokens, capacity, barWidth = 10, approximate = false) {
   return `ctx ${bar}${paint(color(p), `${approximate ? '~' : ''}${p}%`)}${counts}`;
 }
 
-module.exports = { C, paint, clean, k, separator, width, fit, context };
+function hyperlink(text, target) {
+  if (!target || /[\x00-\x20\x7f]/.test(target)) return text;
+  try {
+    const url = new URL(target);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return text;
+    return `\x1b]8;;${url.href}\x1b\\${text}\x1b]8;;\x1b\\`;
+  } catch { return text; }
+}
+
+module.exports = { C, paint, clean, k, color, separator, width, fit, context, hyperlink };

@@ -6,9 +6,16 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/sync.js\""
+          },
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-links.js\""
           }
         ]
       }
     ]
-  }
+  },
+  "modules": [
+    "./links.ts"
+  ]
 }

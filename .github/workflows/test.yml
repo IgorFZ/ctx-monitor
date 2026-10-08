@@ -19,3 +19,13 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm test
+
+  mod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Claude Code
+        run: curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.295
+      - name: Test native links panel
+        run: |
+          "$HOME/.local/bin/claude" plugin test ./plugins/ctx-monitor

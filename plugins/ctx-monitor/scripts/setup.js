@@ -17,6 +17,9 @@ try {
   if (conflicts.length && !process.argv.includes('--replace')) {
     throw new Error(`Configuração existente em ${conflicts.join(', ')}. Use --replace para substituir as duas barras. Nenhuma configuração foi alterada.`);
   }
+  if (process.argv.includes('--experimental-links')) {
+    settings.env = { ...settings.env, CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: '1' };
+  }
   sync();
   settings.statusLine = { type: 'command', command: command('statusline.js'), refreshInterval: 1 };
   settings.subagentStatusLine = { type: 'command', command: command('subagent-statusline.js') };

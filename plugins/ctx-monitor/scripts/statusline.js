@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Modelo e contexto na primeira linha; cache e memória na segunda.
+// Linhas de contexto, cache, ai-memory e limites de uso.
 //
-// Desligar segmentos: CTX_MONITOR_CACHE=0, CTX_MONITOR_AIMEMORY=0
+// Desligar segmentos: CTX_MONITOR_CACHE=0, CTX_MONITOR_AIMEMORY=0, CTX_MONITOR_RATE_LIMITS=0
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const { C, paint, clean, k, separator, fit, context } = require('./format');
+const { C, paint, clean, k, color, separator, fit, context, hyperlink } = require('./format');
 
 function clock(sec) {
   sec = Math.max(0, Math.floor(sec));
@@ -65,8 +65,40 @@ function aiMemorySeg(d) {
   if (st.missing) return null;
   const queue = st.ok ? st.spool?.pending : st.pending;
   const q = queue ? ` · fila ${queue}` : '';
-  if (!st.ok) return 'memory ' + paint(C.yellow, 'offline') + q;
-  return `memory ${k(st.counts?.pages_latest ?? 0)} páginas` + q;
+  let webUrl = process.env.CTX_MONITOR_AIMEMORY_URL;
+  if (!webUrl && st.client?.server_url) {
+    try {
+      const url = new URL(st.client.server_url);
+      url.pathname = url.pathname.replace(/\/$/, '') + '/web';
+      url.search = '';
+      url.hash = '';
+      webUrl = url.href;
+    } catch {}
+  }
+  const label = hyperlink('ai-memory', webUrl);
+  if (!st.ok) return label + ' ' + paint(C.yellow, 'offline') + q;
+  return `${label} ${k(st.counts?.pages_latest ?? 0)} páginas` + q;
+}
+
+function rateLimitsSeg(d) {
+  const now = Date.now();
+  const parts = [];
+  for (const [key, label] of [['five_hour', '5h'], ['seven_day', '7d']]) {
+    const limit = d.rate_limits?.[key];
+    if (!limit || !Number.isFinite(limit.used_percentage) || limit.used_percentage < 0) continue;
+    const reset = Number.isFinite(limit.resets_at) ? new Date(limit.resets_at * 1000) : null;
+    if (reset && (!Number.isFinite(reset.getTime()) || reset.getTime() <= now)) continue;
+    let segment = `${label} ${paint(color(limit.used_percentage), `${Math.round(limit.used_percentage)}%`)}`;
+    if (reset) {
+      const pad = (n) => String(n).padStart(2, '0');
+      const today = new Date(now);
+      const date = reset.toDateString() === today.toDateString() ? ''
+        : `${pad(reset.getDate())}/${pad(reset.getMonth() + 1)} `;
+      segment += ` · reset ${date}${pad(reset.getHours())}:${pad(reset.getMinutes())}`;
+    }
+    parts.push(segment);
+  }
+  return parts.length ? 'limites ' + parts.join(separator) : null;
 }
 
 let input = '';
@@ -78,11 +110,11 @@ process.stdin.on('end', () => {
 
   const columns = Math.max(1, Number(process.env.COLUMNS) || 120);
   console.log(fit(contextSeg(d, columns), columns));
-  const details = [];
-  if (process.env.CTX_MONITOR_CACHE !== '0') details.push(cacheSeg(d));
+  const lines = [];
+  if (process.env.CTX_MONITOR_CACHE !== '0') lines.push(cacheSeg(d));
   if (process.env.CTX_MONITOR_AIMEMORY !== '0') {
-    try { details.push(aiMemorySeg(d)); } catch {}
+    try { lines.push(aiMemorySeg(d)); } catch {}
   }
-  const line = details.filter(Boolean).join(separator);
-  if (line) console.log(fit(line, columns));
+  if (process.env.CTX_MONITOR_RATE_LIMITS !== '0') lines.push(rateLimitsSeg(d));
+  for (const line of lines.filter(Boolean)) console.log(fit(line, columns));
 });

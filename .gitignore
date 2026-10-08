@@ -8,3 +8,4 @@ coverage/
 .aws/
 .codex/
 .agents/
+plugins/ctx-monitor/.claude-plugin/types/

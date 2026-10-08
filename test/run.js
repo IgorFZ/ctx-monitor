@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const scripts = path.resolve(__dirname, '../plugins/ctx-monitor/scripts');
-const { clean, width } = require(path.join(scripts, 'format'));
+const { clean, width, hyperlink, fit } = require(path.join(scripts, 'format'));
 const env = { ...process.env, CTX_MONITOR_AIMEMORY: '0', COLUMNS: '120' };
 delete env.CLAUDE_PLUGIN_ROOT;
 const render = (script, data, extra = {}) => {
@@ -36,6 +36,30 @@ for (const columns of [1, 20, 60, 80, 120]) {
     assert.ok(width(line) <= columns);
   }
 }
+const rates = { ...main, rate_limits: {
+  five_hour: { used_percentage: 23.5, resets_at: Date.now() / 1000 + 3600 },
+  seven_day: { used_percentage: 91, resets_at: Date.now() / 1000 + 6 * 86400 },
+} };
+const rateLine = clean(render('statusline.js', rates)).split('\n').at(-1);
+assert.match(rateLine, /limites 5h 24% · reset/);
+assert.match(rateLine, /7d 91% · reset \d{2}\/\d{2} \d{2}:\d{2}/);
+assert.ok(!clean(render('statusline.js', rates, { CTX_MONITOR_RATE_LIMITS: '0' })).includes('limites'));
+assert.ok(!clean(render('statusline.js', { ...main, rate_limits: { five_hour: { used_percentage: 20, resets_at: 1 } } })).includes('limites'));
+assert.match(clean(render('statusline.js', { ...main, rate_limits: { five_hour: { used_percentage: 0 } } })), /limites 5h 0%/);
+const linked = hyperlink('ai-memory', 'http://localhost:49374/web');
+assert.equal(clean(linked), 'ai-memory');
+assert.equal(width(linked), 9);
+assert.equal(hyperlink('memory', 'javascript:alert(1)'), 'memory');
+assert.equal(hyperlink('memory', 'https://user:pass@example.com'), 'memory');
+assert.equal(hyperlink('memory', 'http://localhost/\x07bad'), 'memory');
+const cropped = fit(linked + ' pages', 5);
+assert.equal(clean(cropped), 'ai-m…');
+assert.ok(cropped.includes('\x1b]8;;\x1b\\'));
+assert.equal(width(cropped), 5);
+for (const columns of [20, 60, 120]) {
+  for (const line of render('statusline.js', rates, { COLUMNS: String(columns) }).split('\n')) assert.ok(width(line) <= columns);
+}
+
 const tasks = [
   { id: 'one', agentType: 'Explore', model: 'claude-haiku-5-5', effort: 'low', tokenCount: 42000, contextWindowSize: 200000, label: 'Inspecting logs' },
   { id: 'two', name: 'reviewer', model: 'claude-sonnet-5-5', effort: 0, tokenCount: 505000, contextWindowSize: 200000 },
@@ -82,7 +106,10 @@ try {
   }
   const plugin = JSON.parse(fs.readFileSync(path.resolve(scripts, '../settings.json'), 'utf8'));
   assert.equal(plugin.subagentStatusLine.command, settings.subagentStatusLine.command);
-  assert.equal(setup().status, 0);
+  assert.equal(setup(['--experimental-links']).status, 0);
+  const experimental = JSON.parse(fs.readFileSync(file, 'utf8'));
+  assert.equal(experimental.env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS, '1');
+  assert.equal(experimental.env.KEEP, 'yes');
   fs.writeFileSync(file, '{broken');
   assert.equal(setup(['--replace']).status, 1);
   assert.equal(fs.readFileSync(file, 'utf8'), '{broken');
