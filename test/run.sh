@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Evita consultar serviços locais ao rodar as entradas simuladas.
+export CTX_MONITOR_AIMEMORY=0
 cd "$(dirname "$0")/../plugins/ctx-monitor/scripts"
 echo '{"model":{"display_name":"Opus"},"effort":{"level":"high"},"context_window":{"used_percentage":67,"total_input_tokens":134000,"context_window_size":200000}}' | node statusline.js
 echo '{}' | node statusline.js

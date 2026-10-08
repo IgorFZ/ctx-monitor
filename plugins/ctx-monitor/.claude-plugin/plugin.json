@@ -1,6 +1,17 @@
 {
   "name": "ctx-monitor",
   "description": "Barras de contexto, modelo e effort do agente principal e de cada subagente",
-  "author": { "name": "Igor Felipe Zampieri" },
-  "keywords": ["statusline", "context-window", "subagents", "effort"]
+  "author": {
+    "name": "Igor Felipe Zampieri"
+  },
+  "keywords": [
+    "statusline",
+    "context-window",
+    "subagents",
+    "effort"
+  ],
+  "version": "0.1.0",
+  "homepage": "https://github.com/IgorFZ/ctx-monitor",
+  "repository": "https://github.com/IgorFZ/ctx-monitor",
+  "license": "MIT"
 }

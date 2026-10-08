@@ -1,1 +1,17 @@
-{ "name": "ctx-monitor", "private": true, "scripts": { "test": "bash test/run.sh" } }
+{
+  "name": "ctx-monitor",
+  "version": "0.1.0",
+  "description": "Monitor de contexto para Claude Code",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IgorFZ/ctx-monitor.git"
+  },
+  "scripts": {
+    "test": "bash test/run.sh"
+  },
+  "license": "MIT"
+}
