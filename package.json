@@ -1,0 +1,1 @@
+{ "name": "ctx-monitor", "private": true, "scripts": { "test": "bash test/run.sh" } }

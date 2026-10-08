@@ -1,0 +1,12 @@
+{
+  "name": "ctx-monitor",
+  "owner": { "name": "Igor Felipe Zampieri" },
+  "description": "Monitor de janela de contexto, modelo e effort para Claude Code",
+  "plugins": [
+    {
+      "name": "ctx-monitor",
+      "source": "./plugins/ctx-monitor",
+      "description": "Barras de contexto, modelo e effort do agente principal e de cada subagente"
+    }
+  ]
+}
