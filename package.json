@@ -11,7 +11,7 @@
     "url": "https://github.com/IgorFZ/ctx-monitor.git"
   },
   "scripts": {
-    "test": "bash test/run.sh"
+    "test": "node test/run.js && node test/links.mjs"
   },
   "license": "MIT"
 }

@@ -7,7 +7,7 @@ const messages: SessionMessage[] = [
   ] },
 ];
 const pane: RenderPropsOf['Pane'] = { isFocused: true, title: 'Links', bodyColumns: 70, placement: 'inline', scroll: { offset: 0, bodyRows: 16 }, view: {} };
-const band: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isWorking: false, maxRows: 5, bodyColumns: 120, scroll: { offset: 0, bodyRows: 5 }, view: {} };
+const band: RenderPropsOf['AbovePrompt'] = { hasSurvey: false, isCollapsed: false, isWorking: false, maxRows: 5, bodyColumns: 120, scroll: { offset: 0, bodyRows: 5 }, view: {} };
 
 function beneath(on: On, opened: unknown[] = [], closed: unknown[] = []) {
   on('session.start', ($, e) => ({ cwd: e.cwd }));

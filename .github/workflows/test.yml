@@ -9,9 +9,10 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node: [18, 22, 24]
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Claude Code
-        run: curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.295
+        run: curl -fsSL https://claude.ai/install.sh | bash -s -- 2.1.325
       - name: Test native links panel
         run: |
           "$HOME/.local/bin/claude" plugin test ./plugins/ctx-monitor
