@@ -1,6 +1,6 @@
 {
   "name": "ctx-monitor",
-  "description": "Context, model and effort bars for the main agent and each subagent, plus an environment sidebar (PC, sessions, progress, ports and containers)",
+  "description": "Context, model and effort bars for the main agent and each subagent, a session panel with links and files, and an environment sidebar",
   "author": {
     "name": "Igor Felipe Zampieri"
   },
@@ -13,7 +13,7 @@
     "system-monitor",
     "docker"
   ],
-  "version": "0.3.0",
+  "version": "0.4.0",
   "homepage": "https://github.com/IgorFZ/ctx-monitor",
   "repository": "https://github.com/IgorFZ/ctx-monitor",
   "license": "MIT",

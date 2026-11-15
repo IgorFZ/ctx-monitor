@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createCollection, collectMessages, markdownLinks, normalizeUrl, MAX_LINKS } from '../plugins/ctx-monitor/scripts/links-core.mjs';
+import { categorize, collectMessages, createCollection, displayTitle, groupLinks, markdownLinks, normalizeUrl, MAX_LINKS } from '../plugins/ctx-monitor/scripts/links-core.mjs';
 
 const links = createCollection();
 links.scan('[Documentation](https://example.com/docs). https://example.com/docs https://example.com/path_(nested).', 'Claude');
@@ -29,6 +29,31 @@ const messages = collectMessages([
 assert.equal(messages[0].source, 'Bash');
 assert.match(markdownLinks(messages), /https:\/\/github.com\/acme\/app\/pull\/12/);
 assert.match(markdownLinks([]), /No links/);
+assert.match(markdownLinks(messages), /\*\*Pull requests\*\* \(1\)/);
+
+const kinds = {
+  'https://github.com/acme/app/pull/12': ['pr', 'acme/app#12'],
+  'https://github.com/acme/app/pull/new/feat/x': ['branch', 'feat/x'],
+  'https://github.com/acme/app/issues/3': ['issue', 'acme/app#3'],
+  'https://github.com/acme/app/tree/feat/x': ['branch', 'feat/x'],
+  'https://github.com/acme/app/commit/abcdef1234567890': ['commit', 'abcdef123456'],
+  'https://github.com/acme/app/actions/runs/77/job/9': ['ci', 'acme/app run 77'],
+  'https://github.com/acme/app/blob/main/src/a.ts': ['code', 'acme/app: src/a.ts'],
+  'https://gitlab.com/g/p/-/merge_requests/4': ['pr', 'g/p#4'],
+  'https://dev.azure.com/o/p/_git/repo/pullrequest/77': ['pr', 'repo#77'],
+  'https://acme.atlassian.net/browse/ERP-12': ['issue', 'ERP-12'],
+  'https://docs.python.org/3/': ['docs', ''],
+  'http://localhost:3000/': ['local', ''],
+  'https://example.com/x': ['other', ''],
+};
+for (const [url, [category, ref]] of Object.entries(kinds)) {
+  assert.deepEqual(categorize({ url, source: 'Bash' }), { category, ref }, url);
+}
+assert.equal(categorize({ url: 'https://blog.example.com/post', source: 'WebSearch' }).category, 'search');
+assert.deepEqual(groupLinks([{ url: 'https://example.com/a', title: '', source: 'Bash' }, { url: 'https://github.com/a/b/pull/1', title: '', source: 'Bash' }]).map(g => g.id), ['pr', 'other']);
+assert.equal(displayTitle({ url: 'https://github.com/a/b/pull/1', title: 'github.com', source: 'Bash' }), 'a/b#1');
+assert.equal(displayTitle({ url: 'https://example.com/docs/x/', title: 'example.com', source: 'Bash' }), 'example.com/docs/x');
+assert.equal(displayTitle({ url: 'https://example.com/', title: 'Example', source: 'Bash' }), 'Example');
 
 const scripts = path.resolve('plugins/ctx-monitor/scripts');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ctx-monitor-links-'));

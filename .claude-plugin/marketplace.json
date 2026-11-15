@@ -8,7 +8,7 @@
     {
       "name": "ctx-monitor",
       "source": "./plugins/ctx-monitor",
-      "description": "Context, model and effort bars for the main agent and each subagent, plus an environment sidebar"
+      "description": "Context, model and effort bars, a session panel with links and files, and an environment sidebar"
     }
   ]
 }

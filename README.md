@@ -1,6 +1,6 @@
 # ctx-monitor
 
-Context monitor for Claude Code. Shows model, effort and token usage in the main agent's status line and in the subagent panel. It also shows the prompt cache, usage limits and, when installed, the `ai-memory` CLI. Experimental native panels collect the session's links and show an environment sidebar with the state of the machine, sessions, ports and containers.
+Context monitor for Claude Code. Shows model, effort and token usage in the main agent's status line and in the subagent panel. It also shows the prompt cache, usage limits and, when installed, the `ai-memory` CLI. Experimental native panels list the session's links and files and show an environment sidebar with the state of the machine, sessions, ports and containers.
 
 The interface includes:
 
@@ -9,7 +9,7 @@ The interface includes:
 - **Prompt cache**: warm/cold, TTL countdown, hit ratio and misses
 - **ai-memory** (if the CLI is on the PATH): server online/offline, pages, queue and a link to the web UI
 - **Usage limits**: 5-hour and 7-day windows, with reset time
-- **Links** (experimental): local collection with search, titles and the source of each URL
+- **Session panel** (experimental): the session's links grouped by kind (PRs, issues, branches, commits, CI runs, code, web search, docs) and every file read, created, edited or deleted, with its diff
 - **Environment** (experimental): sidebar with CPU, RAM, GPU, workspace, sessions, request progress, ports and containers
 
 ```text
@@ -64,9 +64,9 @@ export CTX_MONITOR_AIMEMORY_URL=http://localhost:49374/web
 
 The link depends on hyperlink support in the terminal. Limits only appear when Claude provides `rate_limits`; no extra API calls are made. The reset time uses the local time zone and includes the date when the reset is on another day.
 
-## Session links
+## Session panel
 
-To try the native panel, in Claude Code:
+To try the native panels, in Claude Code:
 
 ```text
 /ctx-monitor:setup experimental-links
@@ -78,18 +78,31 @@ Restart the session after setup. It enables `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1
 CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude
 ```
 
-When there are links, a `Links · N` button appears above the prompt. Clicking it, or running `/ctx-links`, opens the panel. The list can be searched by title, URL or source, shows the newest links first and removes duplicates. `Esc` closes the panel. Claude decides the placement: beside the conversation in fullscreen mode, or above the prompt in the main layout, depending on the available space.
+Once the session has links or files, `Links · N` and `Files · N changed` buttons appear above the prompt. Clicking one, or running `/ctx-links` or `/ctx-files`, opens the **Session** panel on that tab. `Esc` closes it. Claude decides the placement: beside the conversation in fullscreen mode, or above the prompt in the main layout, depending on the available space.
 
-Collection uses URLs from messages and tool results, including `gh` and MCP tool output. Titles from Markdown links and JSON results are kept. Bare IDs like `#123` do not become links. The collection never fetches the targets or publishes data, and keeps up to 300 URLs in the session's memory.
+**Links** are grouped into Pull requests, Issues, Branches, Commits, CI runs, Repos & code, Web search, Docs, Local and Other, with a filter for each group and a search over title, URL and source. GitHub, GitLab, Azure DevOps, Jira and Linear URLs are recognized; a PR or issue without a title shows its reference (`owner/repo#12`), a CI run its run number. Links found by `WebSearch` go to Web search. Collection uses URLs from messages and tool results, including `gh` and MCP tool output; it never fetches the targets or publishes data, and keeps up to 300 URLs in the session's memory.
+
+**Files** lists what the session touched, newest first, grouped as:
+
+| Group | What it holds |
+| :-- | :-- |
+| Created | Files `Write` created |
+| Edited | Files changed with `Edit`, `Write`, `MultiEdit` or `NotebookEdit` |
+| Deleted | Files the session changed that no longer exist, or that an `rm` / `git rm` command removed |
+| Changed by commands | In a git repository, files that became dirty during the session without Claude's file tools (scripts, formatters, `sed`) |
+| Read only | Files read and never changed |
+
+Each changed file shows its added and removed lines; selecting it opens the session diff: the content before the session's first write against the file as it is now. A file changed by commands is diffed against `HEAD`. When the original content is unknown (too large for the tool to keep), the panel shows each write's own changes in order.
 
 Text alternatives:
 
 ```text
 /ctx-links list
+/ctx-files list
 /ctx-monitor:links
 ```
 
-The first uses the mod; the second reads the session's local transcript, recorded by the `SessionStart` hook, and works without function hooks. Neither opens links automatically.
+The first two use the mod; the last reads the session's local transcript, recorded by the `SessionStart` hook, and works without function hooks. None of them opens links automatically.
 
 The panels were validated on Claude Code 2.1.322 (Windows) and 2.1.325 (Linux); 2.1.295 does not load this plugin's hooks module. The [mods API](https://github.com/anthropics/claude-code/blob/main/mods/README.md) is in early access and may change. The plugin keeps the text command for sessions where the panel is unavailable.
 
@@ -147,7 +160,7 @@ The first command removes both bars' settings when they point to the plugin. The
 | `hooks/hooks.json` | On `SessionStart`, copies the renderers and the formatting module to `~/.claude/ctx-monitor/` (a path that stays stable across updates) |
 | `commands/setup.md` | Runs `scripts/setup.js`, which configures both bars and saves a backup |
 | `hooks/index.ts` | The single hooks module: combines the events the links and environment features share |
-| `hooks/links.ts` | Collects links and draws the button and the native panel |
+| `hooks/session/` | Collects links and files and draws the buttons and the Session panel |
 | `hooks/environment/` | Collects the machine and session state and draws the environment sidebar |
 | `commands/links.md` | Shows the links in the conversation from the local transcript |
 | `commands/uninstall.md` | Removes both entries when they belong to ctx-monitor |
@@ -166,7 +179,7 @@ The first command removes both bars' settings when they point to the plugin. The
 claude --plugin-dir ./plugins/ctx-monitor
 claude plugin validate ./plugins/ctx-monitor
 npm test   # scripts, link collection and setup
-claude plugin test ./plugins/ctx-monitor   # links panel and environment collectors
+claude plugin test ./plugins/ctx-monitor   # session panel, diffs and environment collectors
 ```
 
 There are no npm dependencies. The scripts use Node.js built-in modules. To contribute, open an issue or a pull request describing the problem and how to reproduce it.

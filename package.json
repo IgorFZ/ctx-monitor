@@ -1,6 +1,6 @@
 {
   "name": "ctx-monitor",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Context monitor for Claude Code",
   "private": true,
   "engines": {
