@@ -145,7 +145,7 @@ let estimando: AbortController | null = null
 
 /** Parte de session.start da barra; o hook em index.ts junta as partes de cada recurso. */
 export async function iniciarAmbiente($: EngineInterface) {
-  await $.command.register({ name: 'ambiente', description: 'Abre a barra de ambiente: uso, progresso, PC, portas e containers' })
+  await $.command.register({ name: 'environment', description: 'Abre a barra de ambiente: uso, progresso, PC, portas e containers' })
   // A medição que passou antes do mod carregar não volta: lê o valor atual. O custo que a
   // sessão já tinha não entra no total (já foi somado antes de uma recarga).
   const leitura = await $.session.usage()
@@ -179,7 +179,7 @@ export async function faixaAmbiente($: EngineInterface, e: RenderInput<'AbovePro
   return (
     <Box flexDirection="column">
       {beneath}
-      <Button key="alternar" action={ACAO_ALTERNAR} plain dimColor label="ctrl+x ctrl+x · ambiente" onPress={() => void abrir($)} />
+      <Button key="alternar" action={ACAO_ALTERNAR} plain dimColor label="ctrl+x ctrl+x · environment" onPress={() => void abrir($)} />
     </Box>
   )
 }
@@ -240,7 +240,7 @@ export const registerAmbiente: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'ambiente' }, async ($, e) => {
+  on('command.run', { command: 'environment' }, async ($, e) => {
     await abrir($)
     // Só o layout fullscreen encaixa o painel ao lado da conversa (a partir de 110 colunas).
     if (e.presentation?.isFullscreen === false)

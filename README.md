@@ -104,7 +104,7 @@ Um painel lateral com o estado da máquina e da sessão, atualizado a cada segun
 - **Progresso**: tempo do pedido em andamento contra uma estimativa feita pelo Haiku (uma chamada pequena por pedido)
 - **Portas** (`ss`) e **containers** (`docker ps`), com botões para encerrar o processo ou parar o container
 
-Também usa os function hooks (veja a seção anterior). Abra com `/ambiente`. No modo fullscreen (`CLAUDE_CODE_NO_FLICKER=1 claude`) e com 110 colunas ou mais, a barra abre sozinha na lateral; fora dele, aparece acima do prompt. Para alternar com `ctrl+x ctrl+x`, adicione ao `~/.claude/keybindings.json`:
+Também usa os function hooks (veja a seção anterior). Abra com `/environment`. No modo fullscreen (`CLAUDE_CODE_NO_FLICKER=1 claude`) e com 110 colunas ou mais, a barra abre sozinha na lateral; fora dele, aparece acima do prompt. Para alternar com `ctrl+x ctrl+x`, adicione ao `~/.claude/keybindings.json`:
 
 ```json
 {
