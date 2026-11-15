@@ -91,7 +91,7 @@ Alternativas em texto:
 
 A primeira usa o mod; a segunda lê o transcript local da sessão, registrado pelo hook `SessionStart`, e funciona sem os function hooks. Nenhuma das duas abre os links automaticamente.
 
-O painel foi validado no Claude Code 2.1.294 e 2.1.295. A [API de mods](https://github.com/anthropics/claude-code/blob/main/mods/README.md) está em acesso antecipado e pode mudar. O plugin mantém o comando em texto para sessões em que o painel não estiver disponível.
+O painel de links e a barra de ambiente foram validados no Claude Code 2.1.325; a 2.1.295 não carrega o módulo de hooks deste plugin. A [API de mods](https://github.com/anthropics/claude-code/blob/main/mods/README.md) está em acesso antecipado e pode mudar. O plugin mantém o comando em texto para sessões em que o painel não estiver disponível.
 
 ## Barra de ambiente
 
