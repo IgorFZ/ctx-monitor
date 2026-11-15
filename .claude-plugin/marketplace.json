@@ -6,7 +6,7 @@
     {
       "name": "ctx-monitor",
       "source": "./plugins/ctx-monitor",
-      "description": "Barras de contexto, modelo e effort do agente principal e de cada subagente"
+      "description": "Barras de contexto, modelo e effort do agente principal e de cada subagente, e barra lateral de ambiente"
     }
   ]
 }

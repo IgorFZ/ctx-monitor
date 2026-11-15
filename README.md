@@ -1,6 +1,6 @@
 # ctx-monitor
 
-Monitor de contexto para Claude Code. Mostra modelo, effort e uso de tokens na status line do agente principal e no painel de subagentes. Também exibe prompt cache, limites de uso e, quando instalado, o CLI `ai-memory`. Um painel experimental reúne os links da sessão dentro do terminal.
+Monitor de contexto para Claude Code. Mostra modelo, effort e uso de tokens na status line do agente principal e no painel de subagentes, e uma barra lateral com o estado do PC, das sessões, das portas e dos containers. Também exibe prompt cache, limites de uso e, quando instalado, o CLI `ai-memory`. Um painel experimental reúne os links da sessão dentro do terminal.
 
 A interface inclui:
 
@@ -10,6 +10,7 @@ A interface inclui:
 - **ai-memory** (se o CLI estiver no PATH): servidor online/offline, páginas, fila e link para a interface web
 - **Limites de uso**: janelas de 5 horas e 7 dias, com horário de reset
 - **Links** (experimental): coleção local com busca, títulos e origem de cada URL
+- **Ambiente** (experimental): barra lateral com CPU, RAM, GPU, workspace, sessões, progresso do pedido, portas e containers
 
 ```text
 Opus 5.5 · high | ctx ━━━━━───── 52% · 518k/1M
@@ -92,6 +93,29 @@ A primeira usa o mod; a segunda lê o transcript local da sessão, registrado pe
 
 O painel foi validado no Claude Code 2.1.294 e 2.1.295. A [API de mods](https://github.com/anthropics/claude-code/blob/main/mods/README.md) está em acesso antecipado e pode mudar. O plugin mantém o comando em texto para sessões em que o painel não estiver disponível.
 
+## Barra de ambiente
+
+Um painel lateral com o estado da máquina e da sessão, atualizado a cada segundo enquanto está aberto:
+
+- **PC**: uso de CPU e RAM; temperatura da CPU (`sensors`) e GPU NVIDIA (`nvidia-smi`), quando disponíveis
+- **Workspace**: caminho e branch, com commits à frente e atrás do upstream
+- **Modelo**: modelo ativo, contexto, custo da sessão, custo total acumulado entre sessões, cache lido e limites de 5h e 7 dias
+- **Sessões**: a atual e as outras sessões do Claude Code abertas na máquina
+- **Progresso**: tempo do pedido em andamento contra uma estimativa feita pelo Haiku (uma chamada pequena por pedido)
+- **Portas** (`ss`) e **containers** (`docker ps`), com botões para encerrar o processo ou parar o container
+
+Também usa os function hooks (veja a seção anterior). Abra com `/ambiente`. No modo fullscreen (`CLAUDE_CODE_NO_FLICKER=1 claude`) e com 110 colunas ou mais, a barra abre sozinha na lateral; fora dele, aparece acima do prompt. Para alternar com `ctrl+x ctrl+x`, adicione ao `~/.claude/keybindings.json`:
+
+```json
+{
+  "bindings": [
+    { "context": "Global", "bindings": { "ctrl+x ctrl+x": "app:toggleReplTab" } }
+  ]
+}
+```
+
+A coleta lê `/proc` e roda `git`, `ss` e `docker`; uma seção cujo comando não existe fica vazia.
+
 ## Remoção
 
 No Claude Code:
@@ -110,7 +134,9 @@ O primeiro comando remove as configurações das duas barras quando apontam para
 | `settings.json` | Registra `subagentStatusLine` usando a cópia local do script |
 | `hooks/hooks.json` | No `SessionStart`, copia os renderizadores e o módulo de formatação para `~/.claude/ctx-monitor/` (caminho estável entre updates) |
 | `commands/setup.md` | Executa `scripts/setup.js`, que configura as duas barras e salva backup |
+| `hooks/index.ts` | Módulo de hooks único: junta os eventos que links e ambiente compartilham |
 | `hooks/links.ts` | Coleta links e desenha o botão e o painel nativo |
+| `hooks/ambiente/` | Coleta o estado do PC e da sessão e desenha a barra de ambiente |
 | `commands/links.md` | Mostra os links na conversa a partir do transcript local |
 | `commands/uninstall.md` | Remove as duas entradas quando pertencem ao ctx-monitor |
 

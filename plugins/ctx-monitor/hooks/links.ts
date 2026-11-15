@@ -1,4 +1,4 @@
-import type { On, EngineInterface, SessionMessage } from 'claude-code';
+import type { On, EngineInterface, RenderElement, RenderInput, SessionMessage } from 'claude-code';
 import { collectMessages, createCollection, markdownLinks, normalizeUrl } from '../scripts/links-core.mjs';
 
 const PANE = 'ctx-monitor-links';
@@ -32,21 +32,35 @@ async function open($: EngineInterface, state: State) {
   }
 }
 
-export function register(on: On) {
-  const state: State = { links: [], query: '' };
+const state: State = { links: [], query: '' };
 
-  on('session.start', async ($, e, next) => {
-    state.links = [];
-    state.query = '';
-    try {
-      await $.command.register({ name: 'ctx-links', description: 'Abre os links desta sessão', argumentHint: '[list]', immediate: true });
-      await refresh($, state);
-    } catch {
-      $.ui.log('Links experimental indisponível. Use /ctx-monitor:links.', { to: 'debug' });
-    }
-    return next(e);
-  });
+/** Parte de session.start dos links; o hook em index.ts junta as partes de cada recurso. */
+export async function iniciarLinks($: EngineInterface) {
+  state.links = [];
+  state.query = '';
+  try {
+    await $.command.register({ name: 'ctx-links', description: 'Abre os links desta sessão', argumentHint: '[list]', immediate: true });
+    await refresh($, state);
+  } catch {
+    $.ui.log('Links experimental indisponível. Use /ctx-monitor:links.', { to: 'debug' });
+  }
+}
 
+/** Parte de turn.complete dos links, depois que o turno terminou. */
+export async function concluirTurnoLinks($: EngineInterface) {
+  try { await refresh($, state); $.ui.invalidate('ui.render'); } catch {}
+}
+
+/** Acrescenta o botão de links à faixa acima do prompt. */
+export function faixaLinks($: EngineInterface, e: RenderInput<'AbovePrompt'>, beneath: RenderElement): RenderElement {
+  if (e.surface !== 'terminal' || e.props.hasSurvey || !state.links.length) return beneath;
+  const { Box, Button } = $.ui.resolve(e);
+  return Box({ flexDirection: 'column', children: [beneath,
+    Button({ key: 'ctx-monitor-links-open', label: `Links · ${state.links.length}`, plain: true,
+      onPress: () => { void open($, state); } })] });
+}
+
+export function registerLinks(on: On) {
   on('tool.call', async ($, e, next) => {
     const result = await next(e);
     // O resultado pode ainda não estar no transcript quando next retorna.
@@ -60,12 +74,6 @@ export function register(on: On) {
     return result;
   });
 
-  on('turn.complete', async ($, e, next) => {
-    const result = await next(e);
-    try { await refresh($, state); $.ui.invalidate('ui.render'); } catch {}
-    return result;
-  });
-
   on('command.run', { command: 'ctx-links' }, async ($, e) => {
     if (e.args.trim() === 'list') {
       await refresh($, state);
@@ -75,17 +83,8 @@ export function register(on: On) {
     return { text: '' };
   });
 
-  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const beneath = await next(e);
-    if (e.surface !== 'terminal' || e.props.hasSurvey || !state.links.length) return beneath;
-    const { Box, Button } = $.ui.resolve(e);
-    return Box({ flexDirection: 'column', children: [beneath,
-      Button({ key: 'ctx-monitor-links-open', label: `Links · ${state.links.length}`, plain: true,
-        onPress: () => { void open($, state); } })] });
-  });
-
-  on('ui.render', { component: 'Pane' }, async ($, e, next) => {
-    if (e.requestId !== PANE || e.surface !== 'terminal') return next(e);
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    if (e.surface !== 'terminal') return next(e);
     const { Box, Text, Link, Input, Button } = $.ui.resolve(e);
     const filtered = state.links.filter(link => `${link.title} ${link.url} ${link.source}`.toLowerCase().includes(state.query.toLowerCase()));
     const rows = filtered.map(link => {

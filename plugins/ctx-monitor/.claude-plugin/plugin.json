@@ -1,6 +1,6 @@
 {
   "name": "ctx-monitor",
-  "description": "Barras de contexto, modelo e effort do agente principal e de cada subagente",
+  "description": "Barras de contexto, modelo e effort do agente principal e de cada subagente, e painel lateral de ambiente (PC, sessões, progresso, portas e containers)",
   "author": {
     "name": "Igor Felipe Zampieri"
   },
@@ -8,10 +8,14 @@
     "statusline",
     "context-window",
     "subagents",
-    "effort"
+    "effort",
+    "sidebar",
+    "system-monitor",
+    "docker"
   ],
-  "version": "0.2.0",
+  "version": "0.3.0",
   "homepage": "https://github.com/IgorFZ/ctx-monitor",
   "repository": "https://github.com/IgorFZ/ctx-monitor",
-  "license": "MIT"
+  "license": "MIT",
+  "types": "./types/index.d.ts"
 }
