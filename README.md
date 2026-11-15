@@ -1,6 +1,6 @@
 # ctx-monitor
 
-Context monitor for Claude Code. Shows model, effort and token usage in the main agent's status line and in the subagent panel. It also shows the prompt cache, usage limits and, when installed, the `ai-memory` CLI. An experimental panel collects the session's links inside the terminal.
+Context monitor for Claude Code. Shows model, effort and token usage in the main agent's status line and in the subagent panel. It also shows the prompt cache, usage limits and, when installed, the `ai-memory` CLI. Experimental native panels collect the session's links and show an environment sidebar with the state of the machine, sessions, ports and containers.
 
 The interface includes:
 
@@ -10,6 +10,7 @@ The interface includes:
 - **ai-memory** (if the CLI is on the PATH): server online/offline, pages, queue and a link to the web UI
 - **Usage limits**: 5-hour and 7-day windows, with reset time
 - **Links** (experimental): local collection with search, titles and the source of each URL
+- **Environment** (experimental): sidebar with CPU, RAM, GPU, workspace, sessions, request progress, ports and containers
 
 ```text
 Opus 5.5 · high | ctx ━━━━━───── 52% · 518k/1M
@@ -90,7 +91,41 @@ Text alternatives:
 
 The first uses the mod; the second reads the session's local transcript, recorded by the `SessionStart` hook, and works without function hooks. Neither opens links automatically.
 
-The panel was validated on Claude Code 2.1.294 and 2.1.295. The [mods API](https://github.com/anthropics/claude-code/blob/main/mods/README.md) is in early access and may change. The plugin keeps the text command for sessions where the panel is unavailable.
+The panels were validated on Claude Code 2.1.322 (Windows) and 2.1.325 (Linux); 2.1.295 does not load this plugin's hooks module. The [mods API](https://github.com/anthropics/claude-code/blob/main/mods/README.md) is in early access and may change. The plugin keeps the text command for sessions where the panel is unavailable.
+
+## Environment sidebar
+
+A sidebar with the state of the machine and the session, refreshed while it is open:
+
+- **PC**: CPU and RAM usage; CPU temperature (`sensors`, Linux) and NVIDIA GPU (`nvidia-smi`), when available
+- **Workspace**: path and branch, with commits ahead of and behind the upstream
+- **Model**: active model, context, session cost, total cost accumulated across sessions, cache read and the 5-hour and 7-day limits
+- **Sessions**: the current one and the other Claude Code sessions open on the machine
+- **Progress**: elapsed time of the request in progress against an estimate made by Haiku (one small call per request)
+- **Ports** and **containers** (`docker ps`), with buttons to kill the process or stop the container
+
+It also uses function hooks (see the previous section). Open it with `/environment`. In fullscreen mode (`CLAUDE_CODE_NO_FLICKER=1 claude`) with 110 columns or more, the sidebar opens by itself beside the chat; otherwise it appears above the prompt. To toggle it with `ctrl+x ctrl+x`, add this to `~/.claude/keybindings.json`:
+
+```json
+{
+  "bindings": [
+    { "context": "Global", "bindings": { "ctrl+x ctrl+x": "app:toggleReplTab" } }
+  ]
+}
+```
+
+| | Linux and WSL | Windows |
+| :-- | :-- | :-- |
+| CPU and RAM | `/proc` | PowerShell (`Get-CimInstance`) |
+| CPU temperature | `sensors` (lm-sensors) | not shown |
+| GPU | `nvidia-smi` | `nvidia-smi` |
+| Ports | `ss` | PowerShell (`Get-NetTCPConnection`), without system services |
+| Sessions | `~/.claude/sessions` with a live process | same, checked against `Get-Process` |
+| Containers | `docker` | `docker` (Docker Desktop) |
+| Kill button | `kill <pid>` | `taskkill /PID <pid> /F` (forced) |
+| Refresh | every 1s | every 3s (each PowerShell call takes about a second) |
+
+A section whose command is missing stays empty. On WSL the sidebar shows the Linux side; ports forwarded to Windows appear there as `wslrelay`.
 
 ## Removal
 
@@ -110,7 +145,9 @@ The first command removes both bars' settings when they point to the plugin. The
 | `settings.json` | Registers `subagentStatusLine` using the local copy of the script |
 | `hooks/hooks.json` | On `SessionStart`, copies the renderers and the formatting module to `~/.claude/ctx-monitor/` (a path that stays stable across updates) |
 | `commands/setup.md` | Runs `scripts/setup.js`, which configures both bars and saves a backup |
+| `hooks/index.ts` | The single hooks module: combines the events the links and environment features share |
 | `hooks/links.ts` | Collects links and draws the button and the native panel |
+| `hooks/environment/` | Collects the machine and session state and draws the environment sidebar |
 | `commands/links.md` | Shows the links in the conversation from the local transcript |
 | `commands/uninstall.md` | Removes both entries when they belong to ctx-monitor |
 
@@ -120,7 +157,7 @@ The first command removes both bars' settings when they point to the plugin. The
 - Subagent `effort` is the **configured** value; if the model does not support that level, the effective one may differ.
 - Requires Claude Code ≥ 2.1.213 for per-subagent model/effort and ≥ 2.1.251 for the cache line. The subagent type (`agentType`) is reported from 2.1.293.
 - `ai-memory status --json` is queried at most every 30s (cached in a per-session temp file).
-- Requires Node.js 18 or newer on the PATH.
+- Requires Node.js 18 or newer on the PATH. The status line, setup and links scripts run on Linux, macOS and Windows; the environment sidebar supports Linux (including WSL) and Windows.
 
 ## Development
 
@@ -128,7 +165,7 @@ The first command removes both bars' settings when they point to the plugin. The
 claude --plugin-dir ./plugins/ctx-monitor
 claude plugin validate ./plugins/ctx-monitor
 npm test   # scripts, link collection and setup
-claude plugin test ./plugins/ctx-monitor   # button, panel, search and closing
+claude plugin test ./plugins/ctx-monitor   # links panel and environment collectors
 ```
 
 There are no npm dependencies. The scripts use Node.js built-in modules. To contribute, open an issue or a pull request describing the problem and how to reproduce it.

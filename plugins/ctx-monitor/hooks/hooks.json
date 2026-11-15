@@ -16,6 +16,6 @@
     ]
   },
   "modules": [
-    "./links.ts"
+    "./index.ts"
   ]
 }

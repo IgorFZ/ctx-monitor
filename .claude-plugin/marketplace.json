@@ -1,12 +1,14 @@
 {
   "name": "ctx-monitor",
-  "owner": { "name": "Igor Felipe Zampieri" },
+  "owner": {
+    "name": "Igor Felipe Zampieri"
+  },
   "description": "Context window, model and effort monitor for Claude Code",
   "plugins": [
     {
       "name": "ctx-monitor",
       "source": "./plugins/ctx-monitor",
-      "description": "Context, model and effort bars for the main agent and each subagent"
+      "description": "Context, model and effort bars for the main agent and each subagent, plus an environment sidebar"
     }
   ]
 }
