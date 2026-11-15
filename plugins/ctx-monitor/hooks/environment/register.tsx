@@ -1,8 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderElement, RenderInput, Timer } from 'claude-code'
 
-import type { Snapshot } from '../../types'
+import type { Gpu, Snapshot } from '../../types'
 import {
+  AMD_SYSFS,
   parseContainers,
   parseCpuStat,
   parseCpuTemp,
@@ -11,7 +12,10 @@ import {
   parseMemory,
   parsePorts,
   parseSessions,
+  parseAmdSysfs,
   parseWindows,
+  parseWindowsGpu,
+  WINDOWS_GPU_SCRIPT,
   WINDOWS_SCRIPT,
 } from './collect'
 import { describe, ESTIMATE_PROMPT, formatDuration, fraction, parseEstimate } from './progress'
@@ -57,10 +61,28 @@ let lastCost = 0
 let tick: Timer | null = null
 let estimating: AbortController | null = null
 let windows: boolean | undefined
+let wsl: boolean | undefined
+// On WSL the GPU is virtual, so it is read from Windows; each call takes seconds, so it is cached.
+const WSL_GPU_MS = 5000
+let wslGpu: { at: number; gpu: Gpu | undefined; pending?: Promise<void> } = { at: 0, gpu: undefined }
 
 async function isWindows($: EngineInterface): Promise<boolean> {
   windows ??= (await $.env.get('OS')) === 'Windows_NT'
   return windows
+}
+
+async function isWsl($: EngineInterface): Promise<boolean> {
+  wsl ??= Boolean(await $.env.get('WSL_DISTRO_NAME'))
+  return wsl
+}
+
+/** The WSL host's GPU, refreshed in the background so a slow PowerShell never holds a collection. */
+function wslHostGpu($: EngineInterface): Gpu | undefined {
+  if (!wslGpu.pending && Date.now() - wslGpu.at > WSL_GPU_MS) {
+    wslGpu.pending = run($, ['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_GPU_SCRIPT], 15000)
+      .then(output => { wslGpu = { at: Date.now(), gpu: parseWindowsGpu(output.trim()) } })
+  }
+  return wslGpu.gpu
 }
 
 async function run($: EngineInterface, argv: string[], timeoutMs = 5000): Promise<string> {
@@ -95,7 +117,6 @@ async function collect($: EngineInterface): Promise<Snapshot> {
     git: parseGit(branch, counts),
     model,
     sessionId,
-    gpu: parseGpu(gpu),
     containers: parseContainers(docker),
     updatedAt: Date.now(),
   }
@@ -105,6 +126,7 @@ async function collect($: EngineInterface): Promise<Snapshot> {
     const reading = parseWindows(output)
     return {
       ...common,
+      gpu: parseGpu(gpu) ?? reading?.gpu,
       cpuUsage: reading?.cpuUsage ?? 0,
       ramUsedMb: reading?.ramUsedMb ?? 0,
       ramTotalMb: reading?.ramTotalMb ?? 0,
@@ -113,12 +135,13 @@ async function collect($: EngineInterface): Promise<Snapshot> {
     }
   }
 
-  const [stat, meminfo, sensors, ss, sessions] = await Promise.all([
+  const [stat, meminfo, sensors, ss, sessions, amd] = await Promise.all([
     run($, ['cat', '/proc/stat']),
     run($, ['cat', '/proc/meminfo']),
     run($, ['sensors', '-j']),
     run($, ['ss', '-ltnpH']),
     run($, ['sh', '-c', LIVE_SESSIONS]),
+    run($, ['sh', '-c', AMD_SYSFS]),
   ])
   const [ramUsedMb, ramTotalMb] = parseMemory(meminfo)
   // Non-idle share of the time between two /proc/stat readings.
@@ -129,8 +152,10 @@ async function collect($: EngineInterface): Promise<Snapshot> {
       ? Math.round((100 * (deltaTotal - (currentCpu.idle - previousCpu.idle))) / deltaTotal)
       : 0
   if (currentCpu) previousCpu = currentCpu
+  const nvidia = parseGpu(gpu)
   return {
     ...common,
+    gpu: nvidia ?? parseAmdSysfs(amd) ?? ((await isWsl($)) ? wslHostGpu($) : undefined),
     sessions: parseSessions(sessions),
     cpuUsage,
     ramUsedMb,
@@ -381,9 +406,15 @@ export const registerEnvironment: Register = on => {
         {s.gpu && (
           <Text>
             GPU <Text color={fracColor(s.gpu.usage / 100)}>{bar(s.gpu.usage / 100)}</Text> {s.gpu.usage}%
-            <Text color={tempColor(s.gpu.temp)}> {s.gpu.temp}°C</Text> {gb(s.gpu.memUsedMb)}/{gb(s.gpu.memTotalMb)} GB
+            {s.gpu.temp !== undefined && <Text color={tempColor(s.gpu.temp)}> {s.gpu.temp}°C</Text>}
           </Text>
         )}
+        {s.gpu && (
+          <Text>
+            VRAM <Text color={fracColor(s.gpu.memTotalMb ? s.gpu.memUsedMb / s.gpu.memTotalMb : 0)}>{bar(s.gpu.memTotalMb ? s.gpu.memUsedMb / s.gpu.memTotalMb : 0, 9)}</Text> {gb(s.gpu.memUsedMb)}/{gb(s.gpu.memTotalMb)} GB
+          </Text>
+        )}
+        {s.gpu?.name && <Text dimColor>    {s.gpu.name}</Text>}
 
         <Text> </Text>
         <Text bold>Workspace</Text>

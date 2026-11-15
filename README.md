@@ -97,7 +97,7 @@ The panels were validated on Claude Code 2.1.322 (Windows) and 2.1.325 (Linux); 
 
 A sidebar with the state of the machine and the session, refreshed while it is open:
 
-- **PC**: CPU and RAM usage; CPU temperature (`sensors`, Linux) and NVIDIA GPU (`nvidia-smi`), when available
+- **PC**: CPU and RAM usage, CPU temperature (`sensors`, Linux) and the GPU: usage, VRAM and, where available, temperature, for NVIDIA and AMD cards
 - **Workspace**: path and branch, with commits ahead of and behind the upstream
 - **Model**: active model, context, session cost, total cost accumulated across sessions, cache read and the 5-hour and 7-day limits
 - **Sessions**: the current one and the other Claude Code sessions open on the machine
@@ -118,7 +118,8 @@ It also uses function hooks (see the previous section). Open it with `/environme
 | :-- | :-- | :-- |
 | CPU and RAM | `/proc` | PowerShell (`Get-CimInstance`) |
 | CPU temperature | `sensors` (lm-sensors) | not shown |
-| GPU | `nvidia-smi` | `nvidia-smi` |
+| GPU (NVIDIA) | `nvidia-smi` | `nvidia-smi` |
+| GPU (AMD and others) | amdgpu sysfs, with temperature (no ROCm needed); on WSL, the Windows host's counters through `powershell.exe`, every 5s | performance counters (`Get-Counter`), without temperature |
 | Ports | `ss` | PowerShell (`Get-NetTCPConnection`), without system services |
 | Sessions | `~/.claude/sessions` with a live process | same, checked against `Get-Process` |
 | Containers | `docker` | `docker` (Docker Desktop) |

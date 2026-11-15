@@ -2,7 +2,7 @@ export type Port = { port: number; address: string; process: string; pid: number
 export type Container = { name: string; status: string; ports: string }
 export type LocalSession = { id: string; name: string; cwd: string; status: string; updatedAt: number }
 export type Git = { branch: string; ahead: number; behind: number }
-export type Gpu = { usage: number; temp: number; memUsedMb: number; memTotalMb: number }
+export type Gpu = { name?: string; usage: number; temp?: number; memUsedMb: number; memTotalMb: number }
 export type Snapshot = {
   cwd: string
   git?: Git

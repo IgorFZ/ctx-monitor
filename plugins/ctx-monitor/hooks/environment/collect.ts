@@ -73,6 +73,65 @@ export function parseGpu(output: string): Gpu | undefined {
   return { usage: usage!, temp: temp!, memUsedMb: memUsedMb!, memTotalMb: memTotalMb! }
 }
 
+/**
+ * AMD GPUs on Linux, from the amdgpu driver's sysfs (no ROCm needed): one line per card,
+ * `<busy %> <vram used bytes> <vram total bytes> <edge temp in millidegrees or ->`.
+ */
+export const AMD_SYSFS = 'for d in /sys/class/drm/card[0-9]*/device; do [ "$(cat "$d/vendor" 2>/dev/null)" = 0x1002 ] || continue; ' +
+  't=$(cat "$d"/hwmon/hwmon*/temp1_input 2>/dev/null | head -n1); ' +
+  'echo "$(cat "$d/gpu_busy_percent") $(cat "$d/mem_info_vram_used") $(cat "$d/mem_info_vram_total") ${t:--}"; done 2>/dev/null; true'
+
+/** Reads AMD_SYSFS output; the busiest card when there are several. */
+export function parseAmdSysfs(output: string): Gpu | undefined {
+  const cards = output.split('\n').flatMap(line => {
+    const [busy, used, total, temp] = line.trim().split(/\s+/)
+    const values = [busy, used, total].map(Number)
+    if (values.some(v => !Number.isFinite(v)) || !total) return []
+    const [usage, usedBytes, totalBytes] = values as [number, number, number]
+    const celsius = temp && temp !== '-' ? Number(temp) / 1000 : undefined
+    return [{
+      usage,
+      memUsedMb: Math.round(usedBytes / 1048576),
+      memTotalMb: Math.round(totalBytes / 1048576),
+      ...(celsius !== undefined && Number.isFinite(celsius) ? { temp: Math.round(celsius) } : {}),
+    }]
+  })
+  return cards.sort((a, b) => b.usage - a.usage)[0]
+}
+
+/**
+ * Any vendor's GPU on Windows (AMD and Intel have no nvidia-smi): 3D engine use and dedicated
+ * memory from performance counters, the total from the display driver's registry key.
+ * Windows exposes no GPU temperature without vendor tools. Prints JSON, or nothing without a GPU.
+ */
+export const WINDOWS_GPU_SCRIPT = `$ErrorActionPreference = 'SilentlyContinue'
+$card = Get-CimInstance Win32_VideoController | Where-Object { $_.Status -eq 'OK' } | Select-Object -First 1
+if ($card) {
+  $samples = (Get-Counter -Counter '\\GPU Engine(*engtype_3D)\\Utilization Percentage', '\\GPU Adapter Memory(*)\\Dedicated Usage').CounterSamples
+  $usage = ($samples | Where-Object { $_.Path -like '*engtype_3d*' } | Measure-Object CookedValue -Sum).Sum
+  $used = ($samples | Where-Object { $_.Path -like '*dedicated usage' } | Measure-Object CookedValue -Maximum).Maximum
+  $total = (Get-ItemProperty 'HKLM:\\SYSTEM\\ControlSet001\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0*' | Where-Object { $_.DriverDesc -eq $card.Name -and $_.'HardwareInformation.qwMemorySize' } | Select-Object -First 1).'HardwareInformation.qwMemorySize'
+  [pscustomobject]@{ name = $card.Name; usage = $usage; usedBytes = $used; totalBytes = $total } | ConvertTo-Json -Compress
+}`
+
+/** Reads WINDOWS_GPU_SCRIPT's JSON, alone (WSL) or as the `gpu` field of WINDOWS_SCRIPT's. */
+export function parseWindowsGpu(value: unknown): Gpu | undefined {
+  let data = value
+  if (typeof value === 'string') {
+    try { data = JSON.parse(value) } catch { return undefined }
+  }
+  if (!data || typeof data !== 'object') return undefined
+  const g = data as Record<string, unknown>
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  if (typeof g.name !== 'string' || !num(g.totalBytes)) return undefined
+  return {
+    name: g.name,
+    usage: Math.min(100, Math.round(num(g.usage))),
+    memUsedMb: Math.round(num(g.usedBytes) / 1048576),
+    memTotalMb: Math.round(num(g.totalBytes) / 1048576),
+  }
+}
+
 /** Reads the session files from ~/.claude/sessions (one per line), newest first. */
 export function parseSessions(output: string): LocalSession[] {
   const sessions: LocalSession[] = []
@@ -115,10 +174,11 @@ $ports = @(Get-NetTCPConnection -State Listen | ForEach-Object {
   [pscustomobject]@{ port = [int]$_.LocalPort; address = $_.LocalAddress; pid = [int]$_.OwningProcess; process = $names[[int]$_.OwningProcess] }
 })
 $dir = if ($env:CLAUDE_CONFIG_DIR) { $env:CLAUDE_CONFIG_DIR } else { Join-Path $env:USERPROFILE '.claude' }
+$gpu = if (Get-Command nvidia-smi -ErrorAction SilentlyContinue) { $null } else { & { ${WINDOWS_GPU_SCRIPT} } | ConvertFrom-Json }
 $sessions = @(Get-ChildItem (Join-Path $dir 'sessions') -Filter *.json | Where-Object { $names.ContainsKey([int]$_.BaseName) } | ForEach-Object { Get-Content -Raw $_.FullName })
-[pscustomobject]@{ cpu = $cpu; memTotalKb = $os.TotalVisibleMemorySize; memFreeKb = $os.FreePhysicalMemory; ports = $ports; sessions = $sessions } | ConvertTo-Json -Compress -Depth 4`
+[pscustomobject]@{ cpu = $cpu; memTotalKb = $os.TotalVisibleMemorySize; memFreeKb = $os.FreePhysicalMemory; ports = $ports; sessions = $sessions; gpu = $gpu } | ConvertTo-Json -Compress -Depth 4`
 
-export type WindowsReading = { cpuUsage: number; ramUsedMb: number; ramTotalMb: number; ports: Port[]; sessions: LocalSession[] }
+export type WindowsReading = { cpuUsage: number; ramUsedMb: number; ramTotalMb: number; ports: Port[]; sessions: LocalSession[]; gpu?: Gpu }
 
 /** Reads WINDOWS_SCRIPT's output; undefined when PowerShell failed or printed something else. */
 export function parseWindows(output: string): WindowsReading | undefined {
@@ -148,5 +208,6 @@ export function parseWindows(output: string): WindowsReading | undefined {
     ramTotalMb: Math.round(totalKb / 1024),
     ports: byPort([...seen.values()]),
     sessions: parseSessions(sessions),
+    ...(parseWindowsGpu(data.gpu) ? { gpu: parseWindowsGpu(data.gpu) } : {}),
   }
 }

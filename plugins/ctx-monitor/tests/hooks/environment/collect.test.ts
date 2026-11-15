@@ -1,6 +1,7 @@
 import { expect, test } from 'claude-code/testing'
 
 import {
+  parseAmdSysfs,
   parseContainers,
   parseCpuStat,
   parseCpuTemp,
@@ -10,6 +11,7 @@ import {
   parsePorts,
   parseSessions,
   parseWindows,
+  parseWindowsGpu,
 } from '../../../hooks/environment/collect'
 
 test('ports: drops ephemeral, processless and duplicate ports', () => {
@@ -80,4 +82,20 @@ test('windows: reads the PowerShell reading and drops system and ephemeral ports
   })
   expect(parseWindows('')).toBeUndefined()
   expect(parseWindows('{"cpu":null}')).toEqual({ cpuUsage: 0, ramUsedMb: 0, ramTotalMb: 0, ports: [], sessions: [] })
+})
+
+test('amd: sysfs cards, the busiest first, temperature when the driver has it', () => {
+  const output = '3 1073741824 8589934592 48000\n87 6442450944 17163091968 -\n'
+  expect(parseAmdSysfs(output)).toEqual({ usage: 87, memUsedMb: 6144, memTotalMb: 16368 })
+  expect(parseAmdSysfs('3 1073741824 8589934592 48000\n')).toEqual({ usage: 3, memUsedMb: 1024, memTotalMb: 8192, temp: 48 })
+  expect(parseAmdSysfs('')).toBeUndefined()
+})
+
+test('windows gpu: counters for any vendor, alone or inside the full reading', () => {
+  const gpu = { name: 'AMD Radeon RX 6600', usage: 134.2, usedBytes: 2191523840, totalBytes: 8573157376 }
+  const expected = { name: 'AMD Radeon RX 6600', usage: 100, memUsedMb: 2090, memTotalMb: 8176 }
+  expect(parseWindowsGpu(JSON.stringify(gpu))).toEqual(expected)
+  expect(parseWindows(JSON.stringify({ cpu: 1, memTotalKb: 1024, memFreeKb: 0, ports: [], sessions: [], gpu }))?.gpu).toEqual(expected)
+  expect(parseWindowsGpu('')).toBeUndefined()
+  expect(parseWindowsGpu({ name: 'Basic Display', totalBytes: 0 })).toBeUndefined()
 })
