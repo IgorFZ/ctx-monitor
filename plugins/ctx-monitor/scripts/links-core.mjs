@@ -1,4 +1,4 @@
-// Extração local de URLs; sem chamadas de rede e sem resolver IDs por heurística.
+// Local URL extraction; no network calls and no heuristic ID resolution.
 export const MAX_LINKS = 300;
 const plain = (text) => String(text ?? '').replace(/[\x00-\x1f\x7f]/g, ' ').trim();
 
@@ -31,15 +31,15 @@ export function createCollection(seed = []) {
     entries.delete(url);
     entries.set(url, {
       url, title: label && priority >= (previous?.priority ?? 0) ? label : previous?.title || new URL(url).hostname,
-      source: plain(source).slice(0, 80) || 'conversa', priority: Math.max(priority, previous?.priority ?? 0), order: ++order,
+      source: plain(source).slice(0, 80) || 'conversation', priority: Math.max(priority, previous?.priority ?? 0), order: ++order,
     });
     if (entries.size > MAX_LINKS) entries.delete(entries.keys().next().value);
   }
-  function scan(value, source = 'conversa', depth = 0) {
+  function scan(value, source = 'conversation', depth = 0) {
     if (depth > 12 || value == null) return;
     if (typeof value === 'string') {
       const text = value.slice(0, 1_000_000);
-      // JSON retornado por gh/MCP mantém o título junto da URL.
+      // JSON returned by gh/MCP keeps the title next to the URL.
       if (/^\s*[\[{]/.test(text)) {
         try { scan(JSON.parse(text), source, depth + 1); } catch {}
       }
@@ -65,14 +65,14 @@ export function createMessageCollector() {
   const collection = createCollection();
   const toolNames = new Map();
   function consume(message) {
-    collection.scan(message.text, message.role === 'assistant' ? 'Claude' : 'você');
+    collection.scan(message.text, message.role === 'assistant' ? 'Claude' : 'you');
     for (const tool of message.toolUses ?? []) {
-      toolNames.set(tool.id ?? tool.tool_use_id, tool.name ?? tool.tool ?? 'ferramenta');
-      collection.scan(tool.result, tool.name ?? tool.tool ?? 'ferramenta');
-      collection.scan(tool.text, tool.name ?? tool.tool ?? 'ferramenta');
+      toolNames.set(tool.id ?? tool.tool_use_id, tool.name ?? tool.tool ?? 'tool');
+      collection.scan(tool.result, tool.name ?? tool.tool ?? 'tool');
+      collection.scan(tool.text, tool.name ?? tool.tool ?? 'tool');
     }
     for (const result of message.toolResults ?? []) {
-      const name = toolNames.get(result.tool_use_id) ?? 'ferramenta';
+      const name = toolNames.get(result.tool_use_id) ?? 'tool';
       collection.scan(result.result, name);
       collection.scan(result.text, name);
     }
@@ -87,7 +87,7 @@ export function collectMessages(messages) {
 }
 
 export function markdownLinks(links) {
-  if (!links.length) return 'Nenhum link encontrado nesta sessão.';
+  if (!links.length) return 'No links found in this session.';
   const escape = (text) => plain(text).replace(/[\\\[\]*_`]/g, '\\$&');
   return links.map(link => `- [${escape(link.title)}](<${link.url}>) — ${escape(link.source)}`).join('\n');
 }

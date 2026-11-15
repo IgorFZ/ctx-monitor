@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Copia os renderizadores para um caminho que não muda a cada update do plugin.
+// Copies the renderers to a path that does not change on each plugin update.
 const fs = require('fs');
 const path = require('path');
 const { configDir } = require('./config');
@@ -14,8 +14,8 @@ function sync() {
 
 if (require.main === module) {
   try { sync(); } catch (error) {
-    // Uma falha no hook não deve impedir a sessão de abrir.
-    process.stderr.write(`ctx-monitor sync falhou: ${error.message}\n`);
+    // A hook failure must not keep the session from starting.
+    process.stderr.write(`ctx-monitor sync failed: ${error.message}\n`);
   }
 }
 module.exports = { sync };

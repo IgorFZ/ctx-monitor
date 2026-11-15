@@ -10,12 +10,12 @@ try {
   const source = exists ? fs.readFileSync(file, 'utf8') : '{}';
   const settings = JSON.parse(source);
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    throw new Error('settings.json deve conter um objeto JSON');
+    throw new Error('settings.json must contain a JSON object');
   }
   const keys = ['statusLine', 'subagentStatusLine'];
   const conflicts = keys.filter((key) => settings[key] && !settings[key].command?.includes('ctx-monitor'));
   if (conflicts.length && !process.argv.includes('--replace')) {
-    throw new Error(`Configuração existente em ${conflicts.join(', ')}. Use --replace para substituir as duas barras. Nenhuma configuração foi alterada.`);
+    throw new Error(`Existing configuration in ${conflicts.join(', ')}. Use --replace to replace both bars. No settings were changed.`);
   }
   if (process.argv.includes('--experimental-links')) {
     settings.env = { ...settings.env, CLAUDE_CODE_ENABLE_FUNCTION_HOOKS: '1' };
@@ -29,7 +29,7 @@ try {
     console.log(`Backup: ${backup}`);
   }
   fs.writeFileSync(file, JSON.stringify(settings, null, 2) + '\n');
-  console.log('ctx-monitor: barras principal e dos subagentes configuradas.');
+  console.log('ctx-monitor: main and subagent bars configured.');
 } catch (error) {
   console.error(`ctx-monitor: ${error.message}`);
   process.exitCode = 1;

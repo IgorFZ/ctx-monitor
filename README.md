@@ -1,31 +1,31 @@
 # ctx-monitor
 
-Monitor de contexto para Claude Code. Mostra modelo, effort e uso de tokens na status line do agente principal e no painel de subagentes. Também exibe prompt cache, limites de uso e, quando instalado, o CLI `ai-memory`. Um painel experimental reúne os links da sessão dentro do terminal.
+Context monitor for Claude Code. Shows model, effort and token usage in the main agent's status line and in the subagent panel. It also shows the prompt cache, usage limits and, when installed, the `ai-memory` CLI. An experimental panel collects the session's links inside the terminal.
 
-A interface inclui:
+The interface includes:
 
-- **Agente principal** (status line): modelo, effort e uso da janela de contexto
-- **Cada subagente** (painel de agentes): status, tipo, modelo, effort e uso de contexto
-- **Prompt cache**: quente/frio, contagem regressiva do TTL, hit ratio e misses
-- **ai-memory** (se o CLI estiver no PATH): servidor online/offline, páginas, fila e link para a interface web
-- **Limites de uso**: janelas de 5 horas e 7 dias, com horário de reset
-- **Links** (experimental): coleção local com busca, títulos e origem de cada URL
+- **Main agent** (status line): model, effort and context window usage
+- **Each subagent** (agent panel): status, type, model, effort and context usage
+- **Prompt cache**: warm/cold, TTL countdown, hit ratio and misses
+- **ai-memory** (if the CLI is on the PATH): server online/offline, pages, queue and a link to the web UI
+- **Usage limits**: 5-hour and 7-day windows, with reset time
+- **Links** (experimental): local collection with search, titles and the source of each URL
 
 ```text
 Opus 5.5 · high | ctx ━━━━━───── 52% · 518k/1M
 cache 59:15 · hit 98% · misses 3
-ai-memory 701 páginas · fila 2
-limites 5h 24% · reset 18:40 | 7d 84% · reset 10/10 16:00
+ai-memory 701 pages · queue 2
+limits 5h 24% · reset 18:40 | 7d 84% · reset Oct 10 16:00
 
 Explore | haiku-5-5 · low | ctx ━━────── ~21% · 42k/200k
 reviewer | sonnet-5-5 | ctx ━━━━━━━─ ~91% · 910k/1M
 ```
 
-O contexto fica verde abaixo de 60%, amarelo a partir de 60% e vermelho a partir de 85%. A linha de cache mostra o tempo restante, a taxa de acerto e o número de misses. A integração com `ai-memory` mostra páginas ou estado offline, além da fila pendente.
+Context is green below 60%, yellow from 60% and red from 85%. The cache line shows the time left, the hit ratio and the number of misses. The `ai-memory` integration shows pages or an offline state, plus the pending queue.
 
-## Instalação
+## Installation
 
-Execute dentro do Claude Code:
+Run inside Claude Code:
 
 ```text
 /plugin marketplace add IgorFZ/ctx-monitor
@@ -33,9 +33,9 @@ Execute dentro do Claude Code:
 /ctx-monitor:setup
 ```
 
-O setup configura as duas barras no `settings.json` do usuário, faz backup e preserva as outras opções. Se houver outro renderizador configurado, pede confirmação antes de substituí-lo. O diretório padrão é `~/.claude`; `CLAUDE_CONFIG_DIR` também é respeitado.
+Setup configures both bars in the user's `settings.json`, makes a backup and preserves other options. If another renderer is configured, it asks for confirmation before replacing it. The default directory is `~/.claude`; `CLAUDE_CONFIG_DIR` is also honored.
 
-## Atualização
+## Updating
 
 ```text
 /plugin marketplace update ctx-monitor
@@ -43,11 +43,11 @@ O setup configura as duas barras no `settings.json` do usuário, faz backup e pr
 /ctx-monitor:setup
 ```
 
-Reinicie a sessão se o painel dos subagentes continuar com as linhas padrão. O plugin usa cópias locais em um caminho estável, sem depender de `${CLAUDE_PLUGIN_ROOT}` nos comandos das settings.
+Restart the session if the subagent panel still shows the default lines. The plugin uses local copies at a stable path, without depending on `${CLAUDE_PLUGIN_ROOT}` in the settings commands.
 
-## Configuração
+## Configuration
 
-Os segmentos de cache, `ai-memory` e limites de uso são opcionais. Para ocultá-los, configure as variáveis de ambiente antes de abrir o Claude Code:
+The cache, `ai-memory` and usage limit segments are optional. To hide them, set these environment variables before starting Claude Code:
 
 ```bash
 export CTX_MONITOR_CACHE=0
@@ -55,86 +55,86 @@ export CTX_MONITOR_AIMEMORY=0
 export CTX_MONITOR_RATE_LIMITS=0
 ```
 
-Se o CLI `ai-memory` não estiver no PATH, seu segmento fica oculto automaticamente. Quando `status --json` informa `client.server_url`, o nome `ai-memory` é um link OSC 8 para o `/web` daquele servidor. Para usar outro endereço:
+If the `ai-memory` CLI is not on the PATH, its segment is hidden automatically. When `status --json` reports `client.server_url`, the `ai-memory` label is an OSC 8 link to that server's `/web`. To use another address:
 
 ```bash
 export CTX_MONITOR_AIMEMORY_URL=http://localhost:49374/web
 ```
 
-O link depende de suporte a hyperlinks no terminal. Os limites só aparecem quando o Claude fornece `rate_limits`; não fazemos chamadas extras à API. O horário de reset usa o fuso local e inclui a data quando o reset é em outro dia.
+The link depends on hyperlink support in the terminal. Limits only appear when Claude provides `rate_limits`; no extra API calls are made. The reset time uses the local time zone and includes the date when the reset is on another day.
 
-## Links da sessão
+## Session links
 
-Para experimentar o painel nativo, no Claude Code:
+To try the native panel, in Claude Code:
 
 ```text
 /ctx-monitor:setup experimental-links
 ```
 
-Reinicie a sessão depois do setup. Ele habilita `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` nas variáveis de ambiente das settings, com backup. Também é possível abrir o Claude sem alterar essa opção nas settings:
+Restart the session after setup. It enables `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1` in the settings' environment variables, with a backup. You can also start Claude without changing that setting:
 
 ```bash
 CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude
 ```
 
-Quando houver links, aparece um botão `Links · N` acima do prompt. Clicar nele, ou executar `/ctx-links`, abre o painel. A lista tem busca por título, URL ou origem, ordena os links mais recentes primeiro e remove duplicatas. `Esc` fecha o painel. O Claude decide o posicionamento: lateral no modo fullscreen, ou acima do prompt no layout principal, conforme o espaço disponível.
+When there are links, a `Links · N` button appears above the prompt. Clicking it, or running `/ctx-links`, opens the panel. The list can be searched by title, URL or source, shows the newest links first and removes duplicates. `Esc` closes the panel. Claude decides the placement: beside the conversation in fullscreen mode, or above the prompt in the main layout, depending on the available space.
 
-A coleta usa URLs das mensagens e dos resultados das ferramentas, incluindo saída do `gh` e de ferramentas MCP. Títulos de links Markdown e de resultados JSON são preservados. IDs isolados como `#123` não viram links. A coleção não consulta os destinos nem publica dados e guarda até 300 URLs na memória da sessão.
+Collection uses URLs from messages and tool results, including `gh` and MCP tool output. Titles from Markdown links and JSON results are kept. Bare IDs like `#123` do not become links. The collection never fetches the targets or publishes data, and keeps up to 300 URLs in the session's memory.
 
-Alternativas em texto:
+Text alternatives:
 
 ```text
 /ctx-links list
 /ctx-monitor:links
 ```
 
-A primeira usa o mod; a segunda lê o transcript local da sessão, registrado pelo hook `SessionStart`, e funciona sem os function hooks. Nenhuma das duas abre os links automaticamente.
+The first uses the mod; the second reads the session's local transcript, recorded by the `SessionStart` hook, and works without function hooks. Neither opens links automatically.
 
-O painel foi validado no Claude Code 2.1.294 e 2.1.295. A [API de mods](https://github.com/anthropics/claude-code/blob/main/mods/README.md) está em acesso antecipado e pode mudar. O plugin mantém o comando em texto para sessões em que o painel não estiver disponível.
+The panel was validated on Claude Code 2.1.294 and 2.1.295. The [mods API](https://github.com/anthropics/claude-code/blob/main/mods/README.md) is in early access and may change. The plugin keeps the text command for sessions where the panel is unavailable.
 
-## Remoção
+## Removal
 
-No Claude Code:
+In Claude Code:
 
 ```text
 /ctx-monitor:uninstall
 /plugin uninstall ctx-monitor@ctx-monitor
 ```
 
-O primeiro comando remove as configurações das duas barras quando apontam para o plugin. O segundo remove o plugin. As cópias dos scripts em `~/.claude/ctx-monitor/` podem ser apagadas depois.
+The first command removes both bars' settings when they point to the plugin. The second removes the plugin. The script copies in `~/.claude/ctx-monitor/` can be deleted afterwards.
 
-## Como funciona
+## How it works
 
-| Peça | O que faz |
+| Piece | What it does |
 | :-- | :-- |
-| `settings.json` | Registra `subagentStatusLine` usando a cópia local do script |
-| `hooks/hooks.json` | No `SessionStart`, copia os renderizadores e o módulo de formatação para `~/.claude/ctx-monitor/` (caminho estável entre updates) |
-| `commands/setup.md` | Executa `scripts/setup.js`, que configura as duas barras e salva backup |
-| `hooks/links.ts` | Coleta links e desenha o botão e o painel nativo |
-| `commands/links.md` | Mostra os links na conversa a partir do transcript local |
-| `commands/uninstall.md` | Remove as duas entradas quando pertencem ao ctx-monitor |
+| `settings.json` | Registers `subagentStatusLine` using the local copy of the script |
+| `hooks/hooks.json` | On `SessionStart`, copies the renderers and the formatting module to `~/.claude/ctx-monitor/` (a path that stays stable across updates) |
+| `commands/setup.md` | Runs `scripts/setup.js`, which configures both bars and saves a backup |
+| `hooks/links.ts` | Collects links and draws the button and the native panel |
+| `commands/links.md` | Shows the links in the conversation from the local transcript |
+| `commands/uninstall.md` | Removes both entries when they belong to ctx-monitor |
 
-## Compatibilidade e limites
+## Compatibility and limits
 
-- A % dos subagentes, marcada com `~`, é `tokenCount / contextWindowSize` — `tokenCount` é acumulado, então é aproximação. A do principal (`used_percentage`) é exata.
-- `effort` dos subagentes é o valor **configurado**; se o modelo não suportar o nível, o efetivo pode diferir.
-- Requer Claude Code ≥ 2.1.213 para modelo/effort por subagente e ≥ 2.1.251 para a linha de cache. O tipo do subagente (`agentType`) é informado a partir da versão 2.1.293.
-- O `ai-memory status --json` é consultado no máximo a cada 30s (cache em arquivo temporário por sessão).
-- Requer Node.js 18 ou superior no PATH.
+- The subagent percentage, marked with `~`, is `tokenCount / contextWindowSize` — `tokenCount` is cumulative, so it is an approximation. The main agent's (`used_percentage`) is exact.
+- Subagent `effort` is the **configured** value; if the model does not support that level, the effective one may differ.
+- Requires Claude Code ≥ 2.1.213 for per-subagent model/effort and ≥ 2.1.251 for the cache line. The subagent type (`agentType`) is reported from 2.1.293.
+- `ai-memory status --json` is queried at most every 30s (cached in a per-session temp file).
+- Requires Node.js 18 or newer on the PATH.
 
-## Desenvolvimento
+## Development
 
 ```bash
 claude --plugin-dir ./plugins/ctx-monitor
 claude plugin validate ./plugins/ctx-monitor
-npm test   # scripts, coleta de links e configuração
-claude plugin test ./plugins/ctx-monitor   # botão, painel, busca e fechamento
+npm test   # scripts, link collection and setup
+claude plugin test ./plugins/ctx-monitor   # button, panel, search and closing
 ```
 
-Não há dependências npm. Os scripts usam os módulos nativos do Node.js. Para contribuir, abra uma issue ou um pull request com uma descrição do problema e como reproduzi-lo.
+There are no npm dependencies. The scripts use Node.js built-in modules. To contribute, open an issue or a pull request describing the problem and how to reproduce it.
 
-Para verificar os tipos do mod, o Claude gera `.claude-plugin/types/` ao validar ou carregar o plugin. Depois execute `npx -p typescript tsc -p plugins/ctx-monitor`.
+To type-check the mod, Claude generates `.claude-plugin/types/` when it validates or loads the plugin. Then run `npx -p typescript tsc -p plugins/ctx-monitor`.
 
-## Licença
+## License
 
 [MIT](LICENSE).

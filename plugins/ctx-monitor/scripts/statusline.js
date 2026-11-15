@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Linhas de contexto, cache, ai-memory e limites de uso.
+// Context, cache, ai-memory and usage limit lines.
 //
-// Desligar segmentos: CTX_MONITOR_CACHE=0, CTX_MONITOR_AIMEMORY=0, CTX_MONITOR_RATE_LIMITS=0
+// Turn segments off: CTX_MONITOR_CACHE=0, CTX_MONITOR_AIMEMORY=0, CTX_MONITOR_RATE_LIMITS=0
 
 const fs = require('fs');
 const os = require('os');
@@ -19,7 +19,7 @@ function clock(sec) {
 
 function contextSeg(d, columns) {
   const cw = d.context_window ?? {};
-  const model = clean(d.model?.display_name ?? d.model?.id ?? 'modelo --').replace(/\s*\[[^\]]*context\]/i, '');
+  const model = clean(d.model?.display_name ?? d.model?.id ?? 'model --').replace(/\s*\[[^\]]*context\]/i, '');
   const effort = d.effort?.level ? ` · ${clean(d.effort.level)}` : '';
   return paint(C.cyan, model) + effort + separator
     + context(cw.used_percentage, cw.total_input_tokens, cw.context_window_size, columns < 65 ? 0 : 10);
@@ -30,15 +30,15 @@ function cacheSeg(d) {
   if (!pc || pc.caching_observed === false) return null;
   const leftSec = pc.expires_at ? pc.expires_at - Date.now() / 1000 : 0;
   const warm = pc.warm && leftSec > 0;
-  const state = warm ? clock(leftSec) : 'frio';
+  const state = warm ? clock(leftSec) : 'cold';
   const parts = [`cache ${paint(warm ? C.green : C.yellow, state)}`];
-  if (!warm && pc.recache_tokens_if_cold) parts.push(`reescrever ${k(pc.recache_tokens_if_cold)}`);
+  if (!warm && pc.recache_tokens_if_cold) parts.push(`rewrite ${k(pc.recache_tokens_if_cold)}`);
   if (pc.hit_ratio != null) parts.push(`hit ${Math.round(pc.hit_ratio * 100)}%`);
   if (pc.misses) parts.push(`misses ${pc.misses}`);
   return parts.join(' · ');
 }
 
-// `ai-memory status --json` faz chamada HTTP; resultado em cache por 30s.
+// `ai-memory status --json` makes an HTTP call; the result is cached for 30s.
 function aiMemorySeg(d) {
   const session = String(d.session_id ?? 'x').replace(/[^a-zA-Z0-9_-]/g, '_');
   const cacheFile = path.join(os.tmpdir(), `ctx-monitor-aimem-${session}.json`);
@@ -64,7 +64,7 @@ function aiMemorySeg(d) {
   }
   if (st.missing) return null;
   const queue = st.ok ? st.spool?.pending : st.pending;
-  const q = queue ? ` · fila ${queue}` : '';
+  const q = queue ? ` · queue ${queue}` : '';
   let webUrl = process.env.CTX_MONITOR_AIMEMORY_URL;
   if (!webUrl && st.client?.server_url) {
     try {
@@ -77,7 +77,7 @@ function aiMemorySeg(d) {
   }
   const label = hyperlink('ai-memory', webUrl);
   if (!st.ok) return label + ' ' + paint(C.yellow, 'offline') + q;
-  return `${label} ${k(st.counts?.pages_latest ?? 0)} páginas` + q;
+  return `${label} ${k(st.counts?.pages_latest ?? 0)} pages` + q;
 }
 
 function rateLimitsSeg(d) {
@@ -93,12 +93,12 @@ function rateLimitsSeg(d) {
       const pad = (n) => String(n).padStart(2, '0');
       const today = new Date(now);
       const date = reset.toDateString() === today.toDateString() ? ''
-        : `${pad(reset.getDate())}/${pad(reset.getMonth() + 1)} `;
+        : `${reset.toLocaleString('en-US', { month: 'short' })} ${reset.getDate()} `;
       segment += ` · reset ${date}${pad(reset.getHours())}:${pad(reset.getMinutes())}`;
     }
     parts.push(segment);
   }
-  return parts.length ? 'limites ' + parts.join(separator) : null;
+  return parts.length ? 'limits ' + parts.join(separator) : null;
 }
 
 let input = '';

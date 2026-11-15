@@ -1,15 +1,15 @@
 ---
-description: Configura as barras de contexto e, opcionalmente, o painel experimental de links
+description: Sets up the context bars and, optionally, the experimental native panels
 argument-hint: "[experimental-links]"
 ---
 
-Configure as duas barras do ctx-monitor.
+Set up both ctx-monitor bars.
 
-1. Leia o `settings.json` no diretório indicado por `CLAUDE_CONFIG_DIR`, ou em `~/.claude` quando a variável não estiver definida.
-2. Confira as chaves `statusLine` e `subagentStatusLine`. Se alguma existir e o `command` não contiver `ctx-monitor`, mostre os comandos atuais e peça confirmação para substituí-los. Se o usuário já pediu explicitamente para trocar essas barras pelo ctx-monitor, prossiga.
-3. Se os argumentos forem `experimental-links`, use também `--experimental-links`. Essa opção habilita os function hooks em `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`, preservando as outras variáveis; informe que será necessário reiniciar o Claude Code.
-4. Rode `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.js"`. Use `--replace` se a substituição de uma configuração existente foi autorizada. O script faz backup e preserva as outras chaves.
-5. Confira se o comando terminou com sucesso. Não afirme que configurou as barras se houve erro.
-6. Informe que as duas barras foram configuradas. Se o painel continuar com as linhas padrão, peça para reiniciar a sessão; `/reload-plugins` pode não atualizar o comando dos subagentes na sessão atual.
+1. Read `settings.json` in the directory given by `CLAUDE_CONFIG_DIR`, or in `~/.claude` when the variable is not set.
+2. Check the `statusLine` and `subagentStatusLine` keys. If either exists and its `command` does not contain `ctx-monitor`, show the current commands and ask for confirmation before replacing them. If the user already explicitly asked to replace those bars with ctx-monitor, proceed.
+3. If the arguments are `experimental-links`, also pass `--experimental-links`. This enables function hooks in `env.CLAUDE_CODE_ENABLE_FUNCTION_HOOKS`, preserving other variables; tell the user Claude Code must be restarted.
+4. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/setup.js"`. Pass `--replace` if replacing an existing configuration was authorized. The script makes a backup and preserves other keys.
+5. Check that the command succeeded. Do not claim the bars were configured if there was an error.
+6. Report that both bars were configured. If the panel still shows the default lines, ask the user to restart the session; `/reload-plugins` may not update the subagent command in the current session.
 
-Argumentos recebidos: $ARGUMENTS. Aceite somente `experimental-links`; não repasse argumentos livres ao shell.
+Arguments received: $ARGUMENTS. Accept only `experimental-links`; never pass free-form arguments to the shell.

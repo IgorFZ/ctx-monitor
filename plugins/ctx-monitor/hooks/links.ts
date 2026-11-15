@@ -20,15 +20,15 @@ async function open($: EngineInterface, state: State) {
   try {
     await refresh($, state);
     state.query = '';
-    const opened = await $.ui.open({ id: PANE, title: 'Links da sessão', focus: true, closeOnEscape: true, holdToasts: true, rows: 16, columns: 72 });
+    const opened = await $.ui.open({ id: PANE, title: 'Session links', focus: true, closeOnEscape: true, holdToasts: true, rows: 16, columns: 72 });
     if (opened?.isPlaced === false) {
       await $.ui.close({ id: PANE });
-      $.ui.log('O terminal não acomodou o painel. Use /ctx-monitor:links.');
+      $.ui.log('The terminal could not fit the panel. Use /ctx-monitor:links.');
       return;
     }
     $.ui.invalidate('ui.render');
   } catch {
-    $.ui.log('Não foi possível abrir Links. Use /ctx-monitor:links para ver a lista na conversa.');
+    $.ui.log('Could not open Links. Use /ctx-monitor:links to see the list in the conversation.');
   }
 }
 
@@ -39,17 +39,17 @@ export function register(on: On) {
     state.links = [];
     state.query = '';
     try {
-      await $.command.register({ name: 'ctx-links', description: 'Abre os links desta sessão', argumentHint: '[list]', immediate: true });
+      await $.command.register({ name: 'ctx-links', description: "Opens this session's links", argumentHint: '[list]', immediate: true });
       await refresh($, state);
     } catch {
-      $.ui.log('Links experimental indisponível. Use /ctx-monitor:links.', { to: 'debug' });
+      $.ui.log('Experimental links unavailable. Use /ctx-monitor:links.', { to: 'debug' });
     }
     return next(e);
   });
 
   on('tool.call', async ($, e, next) => {
     const result = await next(e);
-    // O resultado pode ainda não estar no transcript quando next retorna.
+    // The result may not be in the transcript yet when next returns.
     try {
       const collection = createCollection(state.links);
       collection.scan(result.result, e.tool);
@@ -89,7 +89,7 @@ export function register(on: On) {
     const { Box, Text, Link, Input, Button } = $.ui.resolve(e);
     const filtered = state.links.filter(link => `${link.title} ${link.url} ${link.source}`.toLowerCase().includes(state.query.toLowerCase()));
     const rows = filtered.map(link => {
-      // Link aceita https e localhost. Outros destinos http continuam visíveis.
+      // Link accepts https and localhost. Other http targets stay visible.
       const url = normalizeUrl(link.url);
       const clickable = url && (url.startsWith('https:') || new URL(url).hostname === 'localhost');
       return Box({ flexDirection: 'column', marginBottom: 1, children: [
@@ -98,14 +98,14 @@ export function register(on: On) {
     });
     const search = (value: string) => { state.query = value; $.ui.invalidate('ui.render'); };
     return Box({ flexDirection: 'column', children: [
-      Text({ bold: true, children: `Links da sessão · ${filtered.length}/${state.links.length}` }),
-      Input({ key: 'ctx-monitor-links-search', placeholder: 'Buscar links', value: state.query, autoFocus: true,
+      Text({ bold: true, children: `Session links · ${filtered.length}/${state.links.length}` }),
+      Input({ key: 'ctx-monitor-links-search', placeholder: 'Search links', value: state.query, autoFocus: true,
         onInput: search, onSubmit: search }),
-      Button({ key: 'ctx-monitor-links-refresh', label: 'Atualizar', plain: true,
+      Button({ key: 'ctx-monitor-links-refresh', label: 'Refresh', plain: true,
         onPress: () => { void refresh($, state).then(() => $.ui.invalidate('ui.render')).catch(() => {}); } }),
       ...rows,
-      ...(!rows.length ? [Text({ dimColor: true, children: 'Nenhum link encontrado.' })] : []),
-      Button({ key: 'ctx-monitor-links-close', label: 'Fechar · Esc', plain: true,
+      ...(!rows.length ? [Text({ dimColor: true, children: 'No links found.' })] : []),
+      Button({ key: 'ctx-monitor-links-close', label: 'Close · Esc', plain: true,
         onPress: () => { void $.ui.close({ id: PANE }); } })] });
   });
 }

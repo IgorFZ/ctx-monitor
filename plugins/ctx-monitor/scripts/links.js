@@ -7,9 +7,9 @@ const { configDir } = require('./config');
 (async () => {
   const { createMessageCollector, markdownLinks } = await import('./links-core.mjs');
   const session = process.argv[2];
-  if (!/^[\w-]{1,128}$/.test(session ?? '')) throw new Error('Informe o ID da sessão atual.');
+  if (!/^[\w-]{1,128}$/.test(session ?? '')) throw new Error('Pass the current session ID.');
   const registry = path.join(configDir(), 'ctx-monitor', 'sessions', `${session}.json`);
-  if (!fs.existsSync(registry)) throw new Error('Sessão não registrada. Reabra o Claude Code com o plugin habilitado.');
+  if (!fs.existsSync(registry)) throw new Error('Session not registered. Reopen Claude Code with the plugin enabled.');
   const { transcript } = JSON.parse(fs.readFileSync(registry, 'utf8'));
   const messages = createMessageCollector();
   const lines = readline.createInterface({ input: fs.createReadStream(transcript), crlfDelay: Infinity });

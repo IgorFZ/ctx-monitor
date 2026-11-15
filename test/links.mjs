@@ -28,7 +28,7 @@ const messages = collectMessages([
 ]);
 assert.equal(messages[0].source, 'Bash');
 assert.match(markdownLinks(messages), /https:\/\/github.com\/acme\/app\/pull\/12/);
-assert.match(markdownLinks([]), /Nenhum link/);
+assert.match(markdownLinks([]), /No links/);
 
 const scripts = path.resolve('plugins/ctx-monitor/scripts');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'ctx-monitor-links-'));
@@ -51,6 +51,6 @@ try {
   assert.equal(run('links.js', ['unknown']).status, 1);
   assert.equal(run('links.js', ['../../other']).status, 1);
   fs.writeFileSync(transcript, '');
-  assert.match(run('links.js', ['one']).stdout, /Nenhum link/);
+  assert.match(run('links.js', ['one']).stdout, /No links/);
 } finally { fs.rmSync(temp, { recursive: true, force: true }); }
-console.log('OK: extração, deduplicação e leitura local dos links por sessão');
+console.log('OK: extraction, deduplication and local per-session link reading');

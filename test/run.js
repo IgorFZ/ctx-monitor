@@ -25,7 +25,7 @@ assert.match(lines[0], /^Opus 5.5 · high \| ctx .*52% · 518k\/1M$/);
 assert.match(lines[1], /^cache \d+:\d+ · hit 98% · misses 3$/);
 assert.ok(!lines.join('').includes('ttl_expired'));
 const expired = render('statusline.js', { ...main, prompt_cache: { ...main.prompt_cache, expires_at: 1 } });
-assert.match(clean(expired), /cache frio/);
+assert.match(clean(expired), /cache cold/);
 assert.ok(!clean(expired).includes('00:00'));
 assert.equal(render('statusline.js', 'invalid'), '');
 assert.equal(render('statusline.js', 'null'), '');
@@ -41,11 +41,11 @@ const rates = { ...main, rate_limits: {
   seven_day: { used_percentage: 91, resets_at: Date.now() / 1000 + 6 * 86400 },
 } };
 const rateLine = clean(render('statusline.js', rates)).split('\n').at(-1);
-assert.match(rateLine, /limites 5h 24% · reset/);
-assert.match(rateLine, /7d 91% · reset \d{2}\/\d{2} \d{2}:\d{2}/);
-assert.ok(!clean(render('statusline.js', rates, { CTX_MONITOR_RATE_LIMITS: '0' })).includes('limites'));
-assert.ok(!clean(render('statusline.js', { ...main, rate_limits: { five_hour: { used_percentage: 20, resets_at: 1 } } })).includes('limites'));
-assert.match(clean(render('statusline.js', { ...main, rate_limits: { five_hour: { used_percentage: 0 } } })), /limites 5h 0%/);
+assert.match(rateLine, /limits 5h 24% · reset/);
+assert.match(rateLine, /7d 91% · reset [A-Z][a-z]{2} \d{1,2} \d{2}:\d{2}/);
+assert.ok(!clean(render('statusline.js', rates, { CTX_MONITOR_RATE_LIMITS: '0' })).includes('limits'));
+assert.ok(!clean(render('statusline.js', { ...main, rate_limits: { five_hour: { used_percentage: 20, resets_at: 1 } } })).includes('limits'));
+assert.match(clean(render('statusline.js', { ...main, rate_limits: { five_hour: { used_percentage: 0 } } })), /limits 5h 0%/);
 const linked = hyperlink('ai-memory', 'http://localhost:49374/web');
 assert.equal(clean(linked), 'ai-memory');
 assert.equal(width(linked), 9);
@@ -116,4 +116,4 @@ try {
 } finally {
   fs.rmSync(temp, { recursive: true, force: true });
 }
-console.log('OK: renderização, limites de largura e configuração das duas barras');
+console.log('OK: rendering, width limits and setup of both bars');

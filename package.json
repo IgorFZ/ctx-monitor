@@ -1,7 +1,7 @@
 {
   "name": "ctx-monitor",
   "version": "0.2.0",
-  "description": "Monitor de contexto para Claude Code",
+  "description": "Context monitor for Claude Code",
   "private": true,
   "engines": {
     "node": ">=18"

@@ -13,7 +13,7 @@ function width(text) {
     : /[\u1100-\u115f\u2329\u232a\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff01-\uff60\uffe0-\uffe6]|\p{Extended_Pictographic}/u.test(char) ? 2 : 1), 0);
 }
 
-// Limita o texto visível sem cortar sequências ANSI.
+// Limits the visible text without cutting ANSI sequences.
 function fit(text, columns) {
   if (width(text) <= columns) return text;
   let result = '', used = 0, linked = false;

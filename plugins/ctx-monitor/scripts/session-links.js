@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Guarda somente o caminho do transcript, por sessão, para o comando de fallback.
+// Stores only the transcript path, per session, for the fallback command.
 const fs = require('fs');
 const path = require('path');
 const { configDir } = require('./config');

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Entrada: { columns, tasks }. Saída: uma linha JSON { id, content } por tarefa.
+// Input: { columns, tasks }. Output: one JSON line { id, content } per task.
 const { C, paint, clean, k, separator, width, fit, context } = require('./format');
 
 let input = '';
@@ -12,7 +12,7 @@ process.stdin.on('end', () => {
   for (const task of data.tasks) {
     if (!task || typeof task.id !== 'string') continue;
     const name = clean(task.name ?? task.agentType ?? 'agent');
-    const model = clean(task.model ? task.model.replace(/^claude-/, '') : 'modelo --');
+    const model = clean(task.model ? task.model.replace(/^claude-/, '') : 'model --');
     const effort = task.effort == null ? '' : ` · ${clean(task.effort)}`;
     const pct = task.contextWindowSize && task.tokenCount != null
       ? task.tokenCount / task.contextWindowSize * 100 : null;
@@ -21,7 +21,7 @@ process.stdin.on('end', () => {
     const metadata = model + effort + separator + tokens;
     const label = fit(name, Math.max(1, columns - width(metadata) - 3));
     let content = paint(C.cyan, label) + separator + metadata;
-    // A interface já fornece o indicador de execução à esquerda da linha.
+    // The UI already draws the running indicator to the left of the line.
     const description = clean(task.label ?? task.description ?? '');
     if (description && columns - width(content) > 16) {
       content += separator + fit(description, columns - width(content) - 3);
