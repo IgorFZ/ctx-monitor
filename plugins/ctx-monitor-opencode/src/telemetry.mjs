@@ -5,19 +5,7 @@ const require = createRequire(import.meta.url);
 const { k } = require('../../../shared/format.js');
 const { getAiMemoryStatus } = require('../../../shared/ai-memory.js');
 
-export interface OpenCodeUsageSummary {
-  model: string;
-  usedTokens: number;
-  contextLimit: number;
-  percentage: number | null;
-  cacheReadTokens: number;
-  costUsd: number;
-}
-
-export function summarizeSessionUsage(
-  messages: ReadonlyArray<Record<string, any>>,
-  providers: ReadonlyArray<Record<string, any>> = [],
-): OpenCodeUsageSummary {
+export function summarizeSessionUsage(messages, providers = []) {
   const assistantMsgs = messages.filter((m) => m?.role === 'assistant');
   const latest = assistantMsgs.at(-1);
   const modelId = latest?.modelID ?? latest?.model?.modelID ?? 'model --';
@@ -55,7 +43,7 @@ export function summarizeSessionUsage(
   };
 }
 
-export function formatUsageBar(pct: number | null, width = 10): string {
+export function formatUsageBar(pct, width = 10) {
   if (pct == null || !Number.isFinite(pct)) return 'ctx --';
   const p = Math.max(0, Math.floor(pct));
   const filled = Math.round((Math.min(100, p) / 100) * width);
@@ -87,8 +75,8 @@ export function readAiMemorySummary(sessionId = 'opencode') {
   };
 }
 
-export function extractUrlsFromParts(parts: ReadonlyArray<Record<string, any>>): string[] {
-  const urls = new Set<string>();
+export function extractUrlsFromParts(parts) {
+  const urls = new Set();
   const rx = /https?:\/\/[^\s<>"'`)\]]+/g;
   for (const part of parts) {
     const candidates = [part?.text, part?.output, part?.state?.output, part?.state?.input && JSON.stringify(part.state.input)];

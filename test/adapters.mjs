@@ -10,7 +10,7 @@ import {
   formatUsageBar,
   readMachineStats,
   summarizeSessionUsage,
-} from '../plugins/ctx-monitor-opencode/src/telemetry.ts';
+} from '../plugins/ctx-monitor-opencode/src/telemetry.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, '..');

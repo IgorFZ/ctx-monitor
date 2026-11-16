@@ -7,7 +7,7 @@ import {
   readAiMemorySummary,
   readMachineStats,
   summarizeSessionUsage,
-} from './telemetry.js';
+} from './telemetry.mjs';
 
 const tui: TuiPlugin = async (api) => {
   const [tick, setTick] = createSignal(0);
