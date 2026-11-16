@@ -1,0 +1,10 @@
+{
+  "ctx-monitor-sync": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "node ./scripts/sync.js"
+      }
+    ]
+  }
+}
